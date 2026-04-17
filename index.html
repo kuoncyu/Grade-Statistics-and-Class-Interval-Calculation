@@ -1,0 +1,357 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, BarChart3, Calculator, Trash2, Plus, X, ListOrdered, AlertCircle, Eye, EyeOff } from 'lucide-react';
+
+export default function App() {
+  // 狀態管理
+  const [scores, setScores] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false); // 新增：控制紀錄是否可見，預設隱藏
+  const inputRef = useRef(null);
+
+  // 預設組距
+  const [intervals, setIntervals] = useState([
+    { id: '1', label: '90~100', min: 90, max: 100 },
+    { id: '2', label: '80~89', min: 80, max: 89.99 },
+    { id: '3', label: '70~79', min: 70, max: 79.99 },
+    { id: '4', label: '60~69', min: 60, max: 69.99 },
+    { id: '5', label: '<60', min: -999, max: 59.99 },
+  ]);
+
+  // 確保畫面載入時自動聚焦輸入框
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  // 處理成績輸入
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const num = parseFloat(inputValue);
+      if (!isNaN(num)) {
+        // 將新成績加到列表最前面
+        setScores((prev) => [num, ...prev]);
+        setInputValue('');
+      }
+    }
+  };
+
+  // 刪除特定成績
+  const handleDeleteScore = (index) => {
+    setScores((prev) => prev.filter((_, i) => i !== index));
+    if (inputRef.current) inputRef.current.focus();
+  };
+
+  // 計算統計數據
+  const totalCount = scores.length;
+  const average = totalCount > 0 ? (scores.reduce((a, b) => a + b, 0) / totalCount).toFixed(2) : 0;
+
+  // 計算組距分布
+  const distribution = intervals.map(interval => {
+    const count = scores.filter(score => score >= interval.min && score <= interval.max).length;
+    return { ...interval, count };
+  });
+
+  const maxDistributionCount = Math.max(...distribution.map(d => d.count), 1); // 避免除以0
+  
+  // 計算未分類的成績（如果使用者更改組距導致有些成績不落在任何區間）
+  const categorizedCount = distribution.reduce((sum, d) => sum + d.count, 0);
+  const uncategorizedCount = totalCount - categorizedCount;
+
+  // 處理組距設定變更
+  const handleIntervalChange = (id, field, value) => {
+    setIntervals(prev => prev.map(inv => {
+      if (inv.id === id) {
+        return { ...inv, [field]: field === 'label' ? value : parseFloat(value) || 0 };
+      }
+      return inv;
+    }));
+  };
+
+  const handleAddInterval = () => {
+    const newId = Date.now().toString();
+    setIntervals(prev => [...prev, { id: newId, label: '新組距', min: 0, max: 0 }]);
+  };
+
+  const handleRemoveInterval = (id) => {
+    setIntervals(prev => prev.filter(inv => inv.id !== id));
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
+      <div className="max-w-5xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
+              <Calculator size={28} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
+              <p className="text-sm text-slate-500">輸入成績並按下 Enter 即可快速統計</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              isSettingsOpen ? 'bg-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'
+            }`}
+          >
+            <Settings size={18} />
+            <span className="hidden sm:inline">自訂組距設定</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* 左側：輸入區與概覽 */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* 成績輸入卡片 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                新增成績
+              </label>
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  type="number"
+                  step="any"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="例如：85"
+                  className="w-full text-4xl font-bold text-slate-900 bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-6 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300"
+                />
+                <div className="absolute right-4 bottom-4 text-xs font-medium text-slate-400 bg-slate-200 px-2 py-1 rounded-md">
+                  Press Enter ↵
+                </div>
+              </div>
+            </div>
+
+            {/* 統計數字卡片 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                <span className="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                  <ListOrdered size={16} /> 總人數
+                </span>
+                <span className="text-4xl font-black text-blue-600">{totalCount} <span className="text-base font-normal text-slate-400">人</span></span>
+              </div>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                <span className="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                  <BarChart3 size={16} /> 平均分數
+                </span>
+                <span className="text-4xl font-black text-emerald-600">{average}</span>
+              </div>
+            </div>
+
+            {/* 歷史輸入紀錄 */}
+            <div className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col transition-all ${isHistoryVisible ? 'h-64' : ''}`}>
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-semibold text-slate-700">輸入紀錄</h3>
+                  <button 
+                    onClick={() => setIsHistoryVisible(!isHistoryVisible)}
+                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors"
+                    title={isHistoryVisible ? "隱藏紀錄" : "顯示紀錄"}
+                  >
+                    {isHistoryVisible ? (
+                      <><EyeOff size={14} /> 隱藏</>
+                    ) : (
+                      <><Eye size={14} /> 顯示</>
+                    )}
+                  </button>
+                </div>
+                {scores.length > 0 && isHistoryVisible && (
+                  <button 
+                    onClick={() => setScores([])}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                  >
+                    全部清除
+                  </button>
+                )}
+              </div>
+              
+              {isHistoryVisible ? (
+                <div className="flex-1 overflow-y-auto pr-2 mt-2 space-y-2 custom-scrollbar">
+                  {scores.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                      尚未輸入任何成績
+                    </div>
+                  ) : (
+                    scores.map((score, index) => (
+                      <div key={index} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 group">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-slate-400 w-6">#{totalCount - index}</span>
+                          <span className="font-bold text-slate-700 text-lg">{score}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteScore(index)}
+                          className="text-slate-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50 transition-colors"
+                          title="刪除"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="py-4 mt-2 flex justify-center items-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-400 select-none">
+                  基於隱私考量，輸入紀錄已摺疊隱藏
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* 右側：圖表與設定 */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* 組距分布圖表 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <BarChart3 size={20} className="text-blue-500" />
+                  成績分布 (組距)
+                </h2>
+              </div>
+
+              <div className="space-y-4">
+                {distribution.map((item) => (
+                  <div key={item.id} className="relative">
+                    <div className="flex justify-between text-sm font-medium text-slate-600 mb-1">
+                      <span>{item.label}</span>
+                      <span className="font-bold text-slate-900">{item.count} 人</span>
+                    </div>
+                    <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${maxDistributionCount > 0 ? (item.count / maxDistributionCount) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* 顯示未分類的警告 */}
+                {uncategorizedCount > 0 && (
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                    <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+                    <div>
+                      <h4 className="text-sm font-bold text-amber-800">有 {uncategorizedCount} 筆成績未被分類</h4>
+                      <p className="text-xs text-amber-600 mt-1">請檢查您的「自訂組距設定」，確保所有輸入的成績都有對應的區間。</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 自訂組距設定區塊 */}
+            {isSettingsOpen && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-slate-400 animate-in fade-in slide-in-from-top-4 duration-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-slate-800">自訂組距設定</h2>
+                  <button 
+                    onClick={() => setIsSettingsOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 mb-2 px-1">
+                    <div className="col-span-4">顯示標籤</div>
+                    <div className="col-span-3">最小值 (含)</div>
+                    <div className="col-span-3">最大值 (含)</div>
+                    <div className="col-span-2 text-center">操作</div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {intervals.map((inv) => (
+                      <div key={inv.id} className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-4">
+                          <input 
+                            type="text" 
+                            value={inv.label} 
+                            onChange={(e) => handleIntervalChange(inv.id, 'label', e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input 
+                            type="number" 
+                            value={inv.min} 
+                            onChange={(e) => handleIntervalChange(inv.id, 'min', e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input 
+                            type="number" 
+                            value={inv.max} 
+                            onChange={(e) => handleIntervalChange(inv.id, 'max', e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="col-span-2 flex justify-center">
+                          <button 
+                            onClick={() => handleRemoveInterval(inv.id)}
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    onClick={handleAddInterval}
+                    className="mt-4 w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-medium hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Plus size={16} /> 新增組距
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-4 text-center">
+                  修改設定後，長條圖會自動依據新的條件重新統計。
+                </p>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        /* Custom Scrollbar for the list */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9; 
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1; 
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8; 
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+          -webkit-appearance: none; 
+          margin: 0; 
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+      `}} />
+    </div>
+  );
+}
