@@ -11,650 +11,758 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
         .hidden-el { display: none; }
 
-        /* 錯誤搖晃動畫 */
+        /* 數字輸入格 */
+        .digit-box {
+            width: 72px; height: 88px;
+            font-size: 2.8rem; font-weight: 900;
+            text-align: center;
+            border: 3px solid #e2e8f0;
+            border-radius: 14px;
+            background: #f8fafc;
+            color: #1e293b;
+            outline: none;
+            caret-color: transparent;
+            cursor: default;
+            user-select: none;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            letter-spacing: 0;
+        }
+        .digit-box.active  { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 3px #bfdbfe; }
+        .digit-box.filled  { border-color: #94a3b8; color: #334155; background: #fff; }
+        .digit-box.error   { border-color: #ef4444 !important; background: #fff5f5 !important; color: #dc2626 !important; }
+
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%       { transform: translateX(-8px); }
-            40%       { transform: translateX(8px); }
-            60%       { transform: translateX(-5px); }
-            80%       { transform: translateX(5px); }
+            0%,100%{ transform:translateX(0); }
+            20%    { transform:translateX(-8px); }
+            40%    { transform:translateX(8px); }
+            60%    { transform:translateX(-5px); }
+            80%    { transform:translateX(5px); }
         }
         .shake { animation: shake 0.4s ease-in-out; }
-        .input-error { border-color: #ef4444 !important; background-color: #fff5f5 !important; color: #dc2626 !important; }
+
         @keyframes voicePulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.15); opacity: 0.7; }
-            100% { transform: scale(1); opacity: 1; }
+            0%,100%{ transform:scale(1); opacity:1; }
+            50%    { transform:scale(1.15); opacity:0.7; }
         }
         .voice-pulse { animation: voicePulse 0.4s ease-in-out; }
 
-        /* 匯出圖片預覽 */
-        #exportCanvas { display: none; }
-
         /* toggle switch */
-        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
         .toggle-slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1; transition: .3s; border-radius: 24px;
+            position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
+            background:#cbd5e1; transition:.3s; border-radius:24px;
         }
         .toggle-slider:before {
-            position: absolute; content: ""; height: 18px; width: 18px;
-            left: 3px; bottom: 3px; background-color: white;
-            transition: .3s; border-radius: 50%;
+            position:absolute; content:""; height:18px; width:18px;
+            left:3px; bottom:3px; background:white; transition:.3s; border-radius:50%;
         }
-        input:checked + .toggle-slider { background-color: #3b82f6; }
-        input:checked + .toggle-slider:before { transform: translateX(20px); }
+        input:checked + .toggle-slider { background:#3b82f6; }
+        input:checked + .toggle-slider:before { transform:translateX(20px); }
+
+        /* 設定彈窗 */
+        #settingsModal {
+            position:fixed; inset:0; z-index:50;
+            background:rgba(15,23,42,0.45);
+            display:none; align-items:center; justify-content:center;
+            backdrop-filter:blur(2px);
+        }
+        #settingsModal.open { display:flex; }
+        .modal-box {
+            background:#fff; border-radius:20px;
+            width:min(560px,95vw); max-height:90vh;
+            overflow-y:auto; padding:28px;
+            box-shadow:0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        #exportCanvas { display:none; }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
-    <div class="max-w-5xl mx-auto space-y-6">
+<div class="max-w-5xl mx-auto space-y-6">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
-                    <i data-lucide="calculator" size="28"></i>
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
+                <i data-lucide="calculator" size="28"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
+                <p class="text-sm text-slate-500" id="headerHint">輸入兩位數成績；個位數加 0（如 06）；100 分按 /</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="exportImageBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm transition-colors">
+                <i data-lucide="image" size="18"></i>
+                <span class="hidden sm:inline">匯出圖片</span>
+            </button>
+            <button id="openSettings" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">
+                <i data-lucide="settings" size="18"></i>
+                <span class="hidden sm:inline">設定</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 左側 -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <!-- 成績輸入卡片 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex items-center justify-between mb-4">
+                    <label class="text-sm font-semibold text-slate-700">新增成績</label>
+                    <div class="flex items-center gap-1.5 text-xs" id="voiceIndicator">
+                        <i data-lucide="volume-2" size="14" id="voiceIcon" class="text-slate-400"></i>
+                        <span id="voiceStatusText" class="text-slate-400">語音提示：關</span>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
-                    <p class="text-sm text-slate-500">輸入成績並按下 Enter 即可快速統計</p>
+
+                <!-- 兩格數字輸入（兩位數模式）-->
+                <div id="digitRow" class="flex items-center justify-center gap-4">
+                    <div class="digit-box active" id="d0">_</div>
+                    <div class="digit-box" id="d1">_</div>
+                </div>
+
+                <!-- 自由輸入模式 -->
+                <div id="freeRow" class="hidden-el flex items-center justify-center gap-3">
+                    <input id="freeInput" type="text" inputmode="decimal"
+                        class="w-48 h-20 text-4xl font-black text-center border-3 border-slate-200 rounded-2xl bg-slate-50 text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_#bfdbfe] transition-all"
+                        style="border-width:3px"
+                        placeholder="0.0"
+                        autocomplete="off" autocorrect="off" spellcheck="false">
+                    <button id="freeSubmit"
+                        class="h-20 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-md shadow-blue-200 transition-colors flex items-center gap-2 text-base">
+                        <i data-lucide="corner-down-left" size="20"></i>
+                        Enter
+                    </button>
+                </div>
+
+                <!-- 回饋訊息 -->
+                <div id="speechBubble" class="hidden-el mt-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                    <i data-lucide="volume-2" size="14" class="text-blue-500 voice-pulse"></i>
+                    <span id="speechBubbleText"></span>
+                </div>
+                <div id="errorBubble" class="hidden-el mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                    <i data-lucide="alert-circle" size="14" class="text-red-500 shrink-0"></i>
+                    <span id="errorMsg">輸入錯誤！</span>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button id="exportImageBtn" title="匯出圖片" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm">
-                    <i data-lucide="image" size="18"></i>
-                    <span class="hidden sm:inline">匯出圖片</span>
-                </button>
-                <button id="toggleSettings" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm">
-                    <i data-lucide="settings" size="18"></i>
-                    <span class="hidden sm:inline">設定</span>
-                </button>
+
+            <!-- 統計數字 -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                        <i data-lucide="list-ordered" size="16"></i> 總人數
+                    </span>
+                    <span class="text-4xl font-black text-blue-600"><span id="totalCount">0</span> <span class="text-base font-normal text-slate-400">人</span></span>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" size="16"></i> 平均分數
+                    </span>
+                    <span id="averageScore" class="text-4xl font-black text-emerald-600">0</span>
+                </div>
+            </div>
+
+            <!-- 歷史紀錄 -->
+            <div id="historyCard" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col transition-all">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-3">
+                        <h3 class="font-semibold text-slate-700">輸入紀錄</h3>
+                        <button id="toggleHistory" class="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors">
+                            <span id="historyBtnContent" class="flex items-center gap-1"><i data-lucide="eye" size="14"></i> 顯示</span>
+                        </button>
+                    </div>
+                    <button id="clearAll" class="hidden-el text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">全部清除</button>
+                </div>
+                <div id="historyListContainer" class="hidden-el flex-1 overflow-y-auto pr-2 mt-2 space-y-2 custom-scrollbar"></div>
+                <div id="historyPlaceholder" class="py-4 mt-2 flex justify-center items-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-400 select-none">
+                    基於隱私考量，輸入紀錄已摺疊隱藏
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-            <!-- 左側：輸入區與概覽 -->
-            <div class="lg:col-span-5 space-y-6">
-
-                <!-- 成績輸入卡片 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-semibold text-slate-700">新增成績</label>
-                        <!-- 語音狀態指示 -->
-                        <div id="voiceIndicator" class="flex items-center gap-1.5 text-xs text-slate-400">
-                            <i data-lucide="volume-2" size="14" id="voiceIcon"></i>
-                            <span id="voiceStatusText">語音提示：關</span>
-                        </div>
+        <!-- 右側：圖表 -->
+        <div class="lg:col-span-7">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
+                    <i data-lucide="bar-chart-3" class="text-blue-500" size="20"></i>
+                    成績分布 (組距)
+                </h2>
+                <div id="distributionChart" class="space-y-4"></div>
+                <div id="uncategorizedWarning" class="hidden-el mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="text-amber-500 shrink-0 mt-0.5" size="18"></i>
+                    <div>
+                        <h4 class="text-sm font-bold text-amber-800">有 <span id="uncategorizedCount">0</span> 筆成績未被分類</h4>
+                        <p class="text-xs text-amber-600 mt-1">請在設定中確認組距範圍涵蓋所有成績。</p>
                     </div>
-                    <div class="relative">
-                        <input
-                            id="scoreInput"
-                            type="number"
-                            step="any"
-                            placeholder="例如：85"
-                            class="w-full text-4xl font-bold text-slate-900 bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-6 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300"
-                        />
-                        <div class="absolute right-4 bottom-4 text-xs font-medium text-slate-400 bg-slate-200 px-2 py-1 rounded-md">
-                            Press Enter ↵
-                        </div>
-                    </div>
-                    <!-- 語音播報提示泡泡 -->
-                    <div id="speechBubble" class="hidden-el mt-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700 flex items-center gap-2">
-                        <i data-lucide="volume-2" size="14" class="text-blue-500 voice-pulse"></i>
-                        <span id="speechBubbleText"></span>
-                    </div>
-                    <!-- 錯誤提示泡泡 -->
-                    <div id="errorBubble" class="hidden-el mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
-                        <i data-lucide="alert-circle" size="14" class="text-red-500 shrink-0"></i>
-                        <span>分數必須介於 0 ~ 100 之間！</span>
-                    </div>
-                </div>
-
-                <!-- 統計數字卡片 -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
-                        <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
-                            <i data-lucide="list-ordered" size="16"></i> 總人數
-                        </span>
-                        <span class="text-4xl font-black text-blue-600"><span id="totalCount">0</span> <span class="text-base font-normal text-slate-400">人</span></span>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
-                        <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
-                            <i data-lucide="bar-chart-3" size="16"></i> 平均分數
-                        </span>
-                        <span id="averageScore" class="text-4xl font-black text-emerald-600">0</span>
-                    </div>
-                </div>
-
-                <!-- 歷史輸入紀錄 -->
-                <div id="historyCard" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col transition-all">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-3">
-                            <h3 class="font-semibold text-slate-700">輸入紀錄</h3>
-                            <button id="toggleHistory" class="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors">
-                                <span id="historyBtnContent" class="flex items-center gap-1"><i data-lucide="eye" size="14"></i> 顯示</span>
-                            </button>
-                        </div>
-                        <button id="clearAll" class="hidden-el text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">
-                            全部清除
-                        </button>
-                    </div>
-                    <div id="historyListContainer" class="hidden-el flex-1 overflow-y-auto pr-2 mt-2 space-y-2 custom-scrollbar"></div>
-                    <div id="historyPlaceholder" class="py-4 mt-2 flex justify-center items-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-400 select-none">
-                        基於隱私考量，輸入紀錄已摺疊隱藏
-                    </div>
-                </div>
-            </div>
-
-            <!-- 右側：圖表與設定 -->
-            <div class="lg:col-span-7 space-y-6">
-
-                <!-- 組距分布圖表 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i data-lucide="bar-chart-3" class="text-blue-500" size="20"></i>
-                            成績分布 (組距)
-                        </h2>
-                    </div>
-                    <div id="distributionChart" class="space-y-4"></div>
-                    <div id="uncategorizedWarning" class="hidden-el mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                        <i data-lucide="alert-circle" class="text-amber-500 shrink-0 mt-0.5" size="18"></i>
-                        <div>
-                            <h4 class="text-sm font-bold text-amber-800">有 <span id="uncategorizedCount">0</span> 筆成績未被分類</h4>
-                            <p class="text-xs text-amber-600 mt-1">請檢查您的「自訂組距設定」，確保所有輸入的成績都有對應的區間。</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 設定區塊 -->
-                <div id="settingsPanel" class="hidden-el bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-slate-400">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-bold text-slate-800">設定</h2>
-                        <button id="closeSettings" class="text-slate-400 hover:text-slate-600 p-1">
-                            <i data-lucide="x" size="20"></i>
-                        </button>
-                    </div>
-
-                    <!-- 語音提示開關 -->
-                    <div class="mb-5 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <i data-lucide="volume-2" class="text-blue-500" size="20"></i>
-                                <div>
-                                    <p class="text-sm font-semibold text-slate-700">語音提示</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">輸入成績後自動朗讀數字</p>
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="voiceToggle">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <!-- 科目輸入 -->
-                        <div class="mt-3 pt-3 border-t border-blue-100">
-                            <label class="text-xs font-semibold text-slate-600 block mb-1.5">科目名稱（用於匯出圖片）</label>
-                            <input type="text" id="subjectName" placeholder="例如：數學" maxlength="20"
-                                class="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:border-blue-500 text-slate-700">
-                        </div>
-                    </div>
-
-                    <!-- 組距設定 -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <h3 class="text-sm font-semibold text-slate-600 mb-3">自訂組距</h3>
-                        <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 mb-2 px-1">
-                            <div class="col-span-4">顯示標籤</div>
-                            <div class="col-span-3">最小值 (含)</div>
-                            <div class="col-span-3">最大值 (含)</div>
-                            <div class="col-span-2 text-center">操作</div>
-                        </div>
-                        <div id="intervalsList" class="space-y-3"></div>
-                        <button id="addInterval" class="mt-4 w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-medium hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm">
-                            <i data-lucide="plus" size="16"></i> 新增組距
-                        </button>
-                    </div>
-                    <p class="text-xs text-slate-400 mt-4 text-center">修改設定後，長條圖會自動重新統計。</p>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- 隱藏 Canvas 用於匯出 -->
-    <canvas id="exportCanvas"></canvas>
+<!-- ── 設定彈窗 ── -->
+<div id="settingsModal">
+    <div class="modal-box">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="settings" class="text-blue-500" size="22"></i> 設定
+            </h2>
+            <button id="closeSettings" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <i data-lucide="x" size="22"></i>
+            </button>
+        </div>
 
-    <script>
-        // ── 核心狀態 ──
-        let scores = [];
-        let intervals = [
-            { id: '1', label: '90~100', min: 90,  max: 100   },
-            { id: '2', label: '80~89',  min: 80,  max: 89.99 },
-            { id: '3', label: '70~79',  min: 70,  max: 79.99 },
-            { id: '4', label: '60~69',  min: 60,  max: 69.99 },
-            { id: '5', label: '<60',    min: -999, max: 59.99 }
-        ];
-        let isHistoryVisible = false;
-        let voiceEnabled = false;
-
-        // ── DOM ──
-        const scoreInput          = document.getElementById('scoreInput');
-        const totalCountEl        = document.getElementById('totalCount');
-        const averageScoreEl      = document.getElementById('averageScore');
-        const historyListContainer= document.getElementById('historyListContainer');
-        const historyPlaceholder  = document.getElementById('historyPlaceholder');
-        const historyCard         = document.getElementById('historyCard');
-        const distributionChart   = document.getElementById('distributionChart');
-        const intervalsList       = document.getElementById('intervalsList');
-        const settingsPanel       = document.getElementById('settingsPanel');
-        const uncategorizedWarning= document.getElementById('uncategorizedWarning');
-        const uncategorizedCountEl= document.getElementById('uncategorizedCount');
-        const voiceToggle         = document.getElementById('voiceToggle');
-        const voiceStatusText     = document.getElementById('voiceStatusText');
-        const voiceIcon           = document.getElementById('voiceIcon');
-        const speechBubble        = document.getElementById('speechBubble');
-        const speechBubbleText    = document.getElementById('speechBubbleText');
-
-        // ── 初始化 ──
-        window.onload = () => {
-            lucide.createIcons();
-            scoreInput.focus();
-            renderAll();
-            updateVoiceUI();
-        };
-
-        // ── 語音提示 ──
-        voiceToggle.addEventListener('change', () => {
-            voiceEnabled = voiceToggle.checked;
-            updateVoiceUI();
-        });
-
-        function updateVoiceUI() {
-            if (voiceEnabled) {
-                voiceStatusText.textContent = '語音提示：開';
-                voiceStatusText.className = 'text-blue-600 font-medium';
-                voiceIcon.setAttribute('class', 'text-blue-500');
-            } else {
-                voiceStatusText.textContent = '語音提示：關';
-                voiceStatusText.className = 'text-slate-400';
-                voiceIcon.setAttribute('class', 'text-slate-400');
-            }
-        }
-
-        // 數字轉中文
-        function numberToChinese(num) {
-            const n = Math.round(num * 10) / 10; // 最多一位小數
-            const units = ['', '十', '百'];
-            const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-
-            if (n < 0) return '負' + numberToChinese(-n);
-
-            // 處理小數
-            const intPart = Math.floor(n);
-            const decPart = Math.round((n - intPart) * 10);
-
-            let result = '';
-
-            if (intPart === 100) {
-                result = '一百';
-            } else if (intPart >= 10) {
-                const tens = Math.floor(intPart / 10);
-                const ones = intPart % 10;
-                if (tens === 1) {
-                    result = '十';
-                } else {
-                    result = digits[tens] + '十';
-                }
-                if (ones !== 0) result += digits[ones];
-            } else {
-                result = digits[intPart];
-            }
-
-            if (decPart > 0) {
-                result += '點' + digits[decPart];
-            }
-
-            return result;
-        }
-
-        let speechBubbleTimer = null;
-        function speakScore(val) {
-            if (!voiceEnabled) return;
-            const text = numberToChinese(val);
-
-            // 顯示提示泡泡
-            speechBubbleText.textContent = '🔊 ' + text;
-            speechBubble.classList.remove('hidden-el');
-            const icon = speechBubble.querySelector('[data-lucide="volume-2"]');
-            if (icon) { icon.classList.remove('voice-pulse'); void icon.offsetWidth; icon.classList.add('voice-pulse'); }
-            clearTimeout(speechBubbleTimer);
-            speechBubbleTimer = setTimeout(() => speechBubble.classList.add('hidden-el'), 2000);
-
-            // Web Speech API
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.lang = 'zh-TW';
-                utter.rate = 0.95;
-                utter.pitch = 1;
-                // 優先選繁中語音
-                const voices = window.speechSynthesis.getVoices();
-                const twVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
-                if (twVoice) utter.voice = twVoice;
-                window.speechSynthesis.speak(utter);
-            }
-        }
-
-        // ── 警告音 ──
-        function playErrorBeep() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                // 第一聲
-                const o1 = ctx.createOscillator();
-                const g1 = ctx.createGain();
-                o1.connect(g1); g1.connect(ctx.destination);
-                o1.type = 'square';
-                o1.frequency.setValueAtTime(380, ctx.currentTime);
-                o1.frequency.linearRampToValueAtTime(220, ctx.currentTime + 0.15);
-                g1.gain.setValueAtTime(0.35, ctx.currentTime);
-                g1.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.18);
-                o1.start(ctx.currentTime); o1.stop(ctx.currentTime + 0.18);
-                // 第二聲（稍低）
-                const o2 = ctx.createOscillator();
-                const g2 = ctx.createGain();
-                o2.connect(g2); g2.connect(ctx.destination);
-                o2.type = 'square';
-                o2.frequency.setValueAtTime(300, ctx.currentTime + 0.22);
-                o2.frequency.linearRampToValueAtTime(180, ctx.currentTime + 0.38);
-                g2.gain.setValueAtTime(0.35, ctx.currentTime + 0.22);
-                g2.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.40);
-                o2.start(ctx.currentTime + 0.22); o2.stop(ctx.currentTime + 0.40);
-            } catch(e) {}
-        }
-
-        let errorBubbleTimer = null;
-        function showErrorBubble() {
-            const eb = document.getElementById('errorBubble');
-            eb.classList.remove('hidden-el');
-            clearTimeout(errorBubbleTimer);
-            errorBubbleTimer = setTimeout(() => eb.classList.add('hidden-el'), 2200);
-        }
-
-        function triggerInputError() {
-            playErrorBeep();
-            showErrorBubble();
-            // 搖晃 + 紅色邊框
-            scoreInput.classList.add('shake', 'input-error');
-            scoreInput.addEventListener('animationend', () => {
-                scoreInput.classList.remove('shake');
-            }, { once: true });
-            // 1.5 秒後恢復邊框顏色
-            setTimeout(() => scoreInput.classList.remove('input-error'), 1500);
-            scoreInput.select();
-        }
-
-        // ── 輸入成績 ──
-        scoreInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const val = parseFloat(scoreInput.value);
-                if (isNaN(val)) return;
-                if (val < 0 || val > 100) {
-                    triggerInputError();
-                    return;
-                }
-                speakScore(val);
-                scores.unshift(val);
-                scoreInput.value = '';
-                renderAll();
-            }
-        });
-
-        // ── 設定面板 ──
-        document.getElementById('toggleSettings').onclick = () => settingsPanel.classList.toggle('hidden-el');
-        document.getElementById('closeSettings').onclick  = () => settingsPanel.classList.add('hidden-el');
-
-        // ── 歷史紀錄 ──
-        document.getElementById('toggleHistory').onclick = () => { isHistoryVisible = !isHistoryVisible; renderHistory(); };
-        document.getElementById('clearAll').onclick = () => { scores = []; renderAll(); };
-
-        // ── 新增組距 ──
-        document.getElementById('addInterval').onclick = () => {
-            intervals.push({ id: Date.now().toString(), label: '新組距', min: 0, max: 0 });
-            renderIntervals();
-            renderChart();
-        };
-
-        // ── 匯出圖片 ──
-        document.getElementById('exportImageBtn').onclick = exportImage;
-
-        function exportImage() {
-            const subject = document.getElementById('subjectName').value.trim() || '成績統計';
-            const count   = scores.length;
-            const avg     = count > 0 ? (scores.reduce((a,b)=>a+b,0)/count).toFixed(2) : '0';
-
-            // 計算組距分布
-            const distribution = intervals.map(inv => {
-                const c = scores.filter(s => s >= inv.min && s <= inv.max).length;
-                return { label: inv.label, count: c };
-            });
-            const maxCount = Math.max(...distribution.map(d => d.count), 1);
-
-            // Canvas 設定
-            const canvas = document.getElementById('exportCanvas');
-            const W = 640, padding = 40;
-            const headerH = 130;
-            const barH = 40, barGap = 18;
-            const totalBarsH = distribution.length * (barH + barGap);
-            const footerH = 60;
-            const H = headerH + totalBarsH + footerH;
-            canvas.width  = W;
-            canvas.height = H;
-            const ctx = canvas.getContext('2d');
-
-            // 背景
-            ctx.fillStyle = '#f8fafc';
-            ctx.fillRect(0, 0, W, H);
-
-            // 頂部藍色裝飾
-            ctx.fillStyle = '#2563eb';
-            ctx.beginPath();
-            ctx.roundRect(0, 0, W, 6, [0, 0, 4, 4]);
-            ctx.fill();
-
-            // 科目標題
-            ctx.fillStyle = '#1e293b';
-            ctx.font = 'bold 26px "Noto Sans TC", "PingFang TC", sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText(subject + '　成績分布', padding, 50);
-
-            // 統計資訊
-            ctx.fillStyle = '#64748b';
-            ctx.font = '15px "Noto Sans TC", "PingFang TC", sans-serif';
-            ctx.fillText(`總人數：${count} 人`, padding, 80);
-            ctx.fillText(`平均分數：${avg}`, padding + 160, 80);
-
-            // 分隔線
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(padding, 100);
-            ctx.lineTo(W - padding, 100);
-            ctx.stroke();
-
-            // 組距標籤欄位說明
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '12px "Noto Sans TC", "PingFang TC", sans-serif';
-            ctx.fillText('組距', padding, 122);
-            ctx.textAlign = 'right';
-            ctx.fillText('人數', W - padding, 122);
-            ctx.textAlign = 'left';
-
-            // 繪製各組距長條
-            const barAreaX = padding + 80;
-            const barAreaW = W - padding - 120;
-            distribution.forEach((item, i) => {
-                const y = headerH + i * (barH + barGap);
-                const barW = maxCount > 0 ? (item.count / maxCount) * barAreaW : 0;
-
-                // 標籤
-                ctx.fillStyle = '#374151';
-                ctx.font = 'bold 15px "Noto Sans TC", "PingFang TC", sans-serif';
-                ctx.textAlign = 'left';
-                ctx.fillText(item.label, padding, y + barH / 2 + 6);
-
-                // 背景軌道
-                ctx.fillStyle = '#e2e8f0';
-                ctx.beginPath();
-                ctx.roundRect(barAreaX, y, barAreaW, barH, 8);
-                ctx.fill();
-
-                // 進度條
-                if (barW > 0) {
-                    // 漸層
-                    const grad = ctx.createLinearGradient(barAreaX, 0, barAreaX + barW, 0);
-                    grad.addColorStop(0, '#3b82f6');
-                    grad.addColorStop(1, '#60a5fa');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.roundRect(barAreaX, y, barW, barH, 8);
-                    ctx.fill();
-                }
-
-                // 人數文字
-                ctx.fillStyle = '#1e293b';
-                ctx.font = 'bold 15px "Noto Sans TC", "PingFang TC", sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText(item.count + ' 人', W - padding, y + barH / 2 + 6);
-            });
-
-            // 底部來源
-            ctx.fillStyle = '#cbd5e1';
-            ctx.font = '12px "Noto Sans TC", "PingFang TC", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('成績統計與組距計算　' + new Date().toLocaleDateString('zh-TW'), W / 2, H - 20);
-
-            // 下載
-            const link = document.createElement('a');
-            link.download = subject + '_成績分布.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        }
-
-        // ── 渲染全部 ──
-        function renderAll() {
-            renderStats();
-            renderHistory();
-            renderChart();
-            renderIntervals();
-        }
-
-        function renderStats() {
-            const count = scores.length;
-            const avg = count > 0 ? (scores.reduce((a,b)=>a+b,0)/count).toFixed(2) : 0;
-            totalCountEl.textContent = count;
-            averageScoreEl.textContent = avg;
-        }
-
-        function renderHistory() {
-            const btnContent = document.getElementById('historyBtnContent');
-            const clearBtn   = document.getElementById('clearAll');
-            if (isHistoryVisible) {
-                historyListContainer.classList.remove('hidden-el');
-                historyPlaceholder.classList.add('hidden-el');
-                historyCard.classList.add('h-64');
-                btnContent.innerHTML = '<i data-lucide="eye-off" size="14"></i> 隱藏';
-                clearBtn.classList.remove('hidden-el');
-                historyListContainer.innerHTML = scores.length === 0
-                    ? `<div class="h-full flex items-center justify-center text-slate-400 text-sm">尚未輸入任何成績</div>`
-                    : scores.map((s, i) => `
-                        <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 group">
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs font-medium text-slate-400 w-6">#${scores.length - i}</span>
-                                <span class="font-bold text-slate-700 text-lg">${s}</span>
-                            </div>
-                            <button onclick="deleteScore(${i})" class="text-slate-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50 transition-colors">
-                                <i data-lucide="x" size="18"></i>
-                            </button>
-                        </div>
-                    `).join('');
-            } else {
-                historyListContainer.classList.add('hidden-el');
-                historyPlaceholder.classList.remove('hidden-el');
-                historyCard.classList.remove('h-64');
-                btnContent.innerHTML = '<i data-lucide="eye" size="14"></i> 顯示';
-                clearBtn.classList.add('hidden-el');
-            }
-            lucide.createIcons();
-        }
-
-        function deleteScore(index) { scores.splice(index, 1); renderAll(); }
-
-        function renderChart() {
-            let categorizedTotal = 0;
-            const distribution = intervals.map(inv => {
-                const count = scores.filter(s => s >= inv.min && s <= inv.max).length;
-                categorizedTotal += count;
-                return { ...inv, count };
-            });
-            const maxCount = Math.max(...distribution.map(d => d.count), 1);
-            const uncategorized = scores.length - categorizedTotal;
-
-            distributionChart.innerHTML = distribution.map(item => `
-                <div class="relative">
-                    <div class="flex justify-between text-sm font-medium text-slate-600 mb-1">
-                        <span>${item.label}</span>
-                        <span class="font-bold text-slate-900">${item.count} 人</span>
-                    </div>
-                    <div class="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out"
-                             style="width: ${(item.count / maxCount) * 100}%"></div>
+        <!-- 語音提示 -->
+        <div class="mb-5 p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="volume-2" class="text-blue-500" size="20"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">語音提示</p>
+                        <p class="text-xs text-slate-500 mt-0.5">輸入成績後自動朗讀數字（兩字速讀）</p>
                     </div>
                 </div>
-            `).join('');
+                <label class="toggle-switch">
+                    <input type="checkbox" id="voiceToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
 
-            if (uncategorized > 0) {
-                uncategorizedWarning.classList.remove('hidden-el');
-                uncategorizedCountEl.textContent = uncategorized;
-            } else {
-                uncategorizedWarning.classList.add('hidden-el');
-            }
-        }
-
-        function renderIntervals() {
-            intervalsList.innerHTML = intervals.map(inv => `
-                <div class="grid grid-cols-12 gap-2 items-center">
-                    <div class="col-span-4">
-                        <input type="text" value="${inv.label}" onchange="updateInterval('${inv.id}', 'label', this.value)"
-                               class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" value="${inv.min}" onchange="updateInterval('${inv.id}', 'min', this.value)"
-                               class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" value="${inv.max}" onchange="updateInterval('${inv.id}', 'max', this.value)"
-                               class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
-                    </div>
-                    <div class="col-span-2 flex justify-center">
-                        <button onclick="removeInterval('${inv.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                            <i data-lucide="trash-2" size="16"></i>
-                        </button>
-                    </div>
+        <!-- 輸入模式 -->
+        <div class="mb-5 p-4 bg-violet-50 rounded-xl border border-violet-100">
+            <div class="flex items-center gap-3 mb-3">
+                <i data-lucide="keyboard" class="text-violet-500" size="20"></i>
+                <div>
+                    <p class="text-sm font-semibold text-slate-700">輸入模式</p>
+                    <p class="text-xs text-slate-500 mt-0.5">選擇適合的成績輸入方式</p>
                 </div>
-            `).join('');
-            lucide.createIcons();
-        }
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="flex items-start gap-3 p-3 bg-white rounded-xl border-2 cursor-pointer transition-colors hover:border-violet-300" id="modeLabel2digit">
+                    <input type="radio" name="inputMode" value="twodigit" id="mode2digit" class="mt-0.5 accent-violet-600">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">兩位數快速模式</p>
+                        <p class="text-xs text-slate-500 mt-0.5">打完第二個數字自動送出，不需按 Enter。個位數補零（如 06），100 分按 /</p>
+                    </div>
+                </label>
+                <label class="flex items-start gap-3 p-3 bg-white rounded-xl border-2 cursor-pointer transition-colors hover:border-violet-300" id="modeLabelFree">
+                    <input type="radio" name="inputMode" value="free" id="modeFree" class="mt-0.5 accent-violet-600">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">自由輸入模式</p>
+                        <p class="text-xs text-slate-500 mt-0.5">支援小數點（如 85.5），輸入完畢後按 Enter 送出</p>
+                    </div>
+                </label>
+            </div>
+        </div>
 
-        function updateInterval(id, field, value) {
-            const inv = intervals.find(i => i.id === id);
-            if (inv) { inv[field] = field === 'label' ? value : parseFloat(value) || 0; renderChart(); }
+        <!-- 科目名稱 -->
+        <div class="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <label class="text-xs font-semibold text-slate-600 block mb-1.5 flex items-center gap-2">
+                <i data-lucide="tag" size="14"></i> 科目名稱（用於匯出圖片）
+            </label>
+            <input type="text" id="subjectName" placeholder="例如：數學" maxlength="20"
+                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 text-slate-700">
+        </div>
+
+        <!-- 組距設定 -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h3 class="text-sm font-semibold text-slate-600 mb-3">自訂組距</h3>
+            <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 mb-2 px-1">
+                <div class="col-span-4">顯示標籤</div>
+                <div class="col-span-3">最小值 (含)</div>
+                <div class="col-span-3">最大值 (含)</div>
+                <div class="col-span-2 text-center">操作</div>
+            </div>
+            <div id="intervalsList" class="space-y-3"></div>
+            <button id="addInterval" class="mt-4 w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-medium hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm">
+                <i data-lucide="plus" size="16"></i> 新增組距
+            </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-4 text-center">修改設定後，長條圖會自動重新統計。</p>
+    </div>
+</div>
+
+<canvas id="exportCanvas"></canvas>
+
+<script>
+// ── 狀態 ──
+let scores = [];
+let intervals = [
+    { id:'1', label:'90~100', min:90,   max:100   },
+    { id:'2', label:'80~89',  min:80,   max:89.99 },
+    { id:'3', label:'70~79',  min:70,   max:79.99 },
+    { id:'4', label:'60~69',  min:60,   max:69.99 },
+    { id:'5', label:'<60',    min:-999, max:59.99  }
+];
+let isHistoryVisible = false;
+let voiceEnabled = false;
+let inputMode = 'twodigit'; // 'twodigit' | 'free'
+
+// ── 兩格輸入狀態 ──
+let digits = ['', ''];
+let curPos = 0;
+
+// ── DOM ──
+const d0 = document.getElementById('d0');
+const d1 = document.getElementById('d1');
+const boxes = [d0, d1];
+
+// ── 初始化 ──
+window.onload = () => {
+    lucide.createIcons();
+    renderAll();
+    updateVoiceUI();
+    resetDigits();
+    document.addEventListener('keydown', onKey);
+    // 模式 radio 監聽
+    document.querySelectorAll('input[name="inputMode"]').forEach(r => {
+        r.addEventListener('change', e => { setInputMode(e.target.value); });
+    });
+    // 自由輸入 Enter 按鈕
+    document.getElementById('freeSubmit').onclick = submitFreeInput;
+    // 自由輸入框 Enter 鍵
+    document.getElementById('freeInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); submitFreeInput(); }
+    });
+    // 預設選中兩位數模式
+    document.getElementById('mode2digit').checked = true;
+    updateModeLabels();
+    updateHeaderHint();
+};
+
+// ── 切換輸入模式 ──
+function setInputMode(mode) {
+    inputMode = mode;
+    const digitRow = document.getElementById('digitRow');
+    const freeRow  = document.getElementById('freeRow');
+    if (mode === 'twodigit') {
+        digitRow.classList.remove('hidden-el');
+        freeRow.classList.add('hidden-el');
+        resetDigits();
+    } else {
+        digitRow.classList.add('hidden-el');
+        freeRow.classList.remove('hidden-el');
+        const fi = document.getElementById('freeInput');
+        fi.value = '';
+        setTimeout(() => fi.focus(), 50);
+    }
+    updateModeLabels();
+    updateHeaderHint();
+}
+
+function updateModeLabels() {
+    const l2 = document.getElementById('modeLabel2digit');
+    const lf = document.getElementById('modeLabelFree');
+    if (l2) l2.style.borderColor = inputMode === 'twodigit' ? '#7c3aed' : '#e2e8f0';
+    if (lf) lf.style.borderColor = inputMode === 'free'     ? '#7c3aed' : '#e2e8f0';
+}
+
+function updateHeaderHint() {
+    const hint = document.getElementById('headerHint');
+    if (inputMode === 'twodigit') {
+        hint.textContent = '兩位數快速模式：個位數補零（如 06）；100 分按 /；輸入第二位自動送出';
+    } else {
+        hint.textContent = '自由輸入模式：支援小數（如 85.5），按 Enter 送出';
+    }
+}
+
+// ── 自由輸入提交 ──
+function submitFreeInput() {
+    const fi = document.getElementById('freeInput');
+    const raw = fi.value.trim();
+    if (raw === '') return;
+    const val = parseFloat(raw);
+    if (isNaN(val) || val < 0 || val > 100) {
+        triggerInputError('分數必須介於 0 ~ 100 之間！');
+        fi.select();
+        return;
+    }
+    fi.value = '';
+    commitScore(val);
+    fi.focus();
+}
+
+// ── 數字格顯示 ──
+function renderBoxes() {
+    boxes.forEach((box, i) => {
+        box.textContent = digits[i] === '' ? '_' : digits[i];
+        box.className = 'digit-box';
+        if (digits[i] !== '') box.classList.add('filled');
+        if (i === curPos) box.classList.add('active');
+    });
+}
+
+function resetDigits() {
+    digits = ['', ''];
+    curPos = 0;
+    renderBoxes();
+}
+
+// ── 鍵盤輸入處理 ──
+function onKey(e) {
+    // 設定彈窗開著時，只攔截 Escape
+    const modal = document.getElementById('settingsModal');
+    if (modal.classList.contains('open')) {
+        if (e.key === 'Escape') closeSettingsModal();
+        return;
+    }
+    // 自由輸入模式：讓 freeInput 自行處理，不攔截
+    if (inputMode === 'free') return;
+    // 不要干擾彈窗內的 input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const key = e.key;
+
+    // 100分：按 /
+    if (key === '/') {
+        e.preventDefault();
+        commitScore(100);
+        return;
+    }
+
+    // 數字鍵 0-9
+    if (/^[0-9]$/.test(key)) {
+        e.preventDefault();
+        if (curPos === 0) {
+            digits[0] = key;
+            digits[1] = '';
+            curPos = 1;
+            renderBoxes();
+        } else {
+            digits[1] = key;
+            renderBoxes();
+            // 第二位填好，自動提交
+            const val = parseInt(digits[0] + digits[1]);
+            setTimeout(() => commitScore(val), 60);
         }
-        function removeInterval(id) { intervals = intervals.filter(i => i.id !== id); renderIntervals(); renderChart(); }
-    </script>
+        return;
+    }
+
+    // Backspace
+    if (key === 'Backspace') {
+        e.preventDefault();
+        if (curPos === 1 && digits[1] !== '') {
+            digits[1] = '';
+            renderBoxes();
+        } else if (curPos === 1 && digits[1] === '') {
+            digits[0] = '';
+            curPos = 0;
+            renderBoxes();
+        } else if (curPos === 0) {
+            digits[0] = '';
+            renderBoxes();
+        }
+        return;
+    }
+}
+
+// ── 提交分數 ──
+function commitScore(val) {
+    if (isNaN(val) || val < 0 || val > 100) {
+        triggerInputError('分數必須介於 0 ~ 100 之間！');
+        resetDigits();
+        return;
+    }
+    speakScore(val);
+    scores.unshift(val);
+    renderAll();
+    resetDigits();
+}
+
+// ── 語音 ──
+document.getElementById('voiceToggle').addEventListener('change', e => {
+    voiceEnabled = e.target.checked;
+    updateVoiceUI();
+});
+
+function updateVoiceUI() {
+    const on = voiceEnabled;
+    document.getElementById('voiceStatusText').textContent = on ? '語音提示：開' : '語音提示：關';
+    document.getElementById('voiceStatusText').className = on ? 'text-blue-600 font-medium' : 'text-slate-400';
+    document.getElementById('voiceIcon').className = on ? 'text-blue-500' : 'text-slate-400';
+}
+
+// 語音文字規則：
+// 100 → 一百
+// 個位數 (1~9) → 「X分」（例如 6 → 六分）
+// 兩位數 (10~99) → 直接唸十位、個位（例如 86 → 八六）
+function scoreToSpeech(val) {
+    const digits_ch = ['零','一','二','三','四','五','六','七','八','九'];
+    if (val === 100) return '一百';
+    if (val < 10)   return digits_ch[val] + '分';
+    // 兩位數：直接唸十位、個位（兩字）
+    const t = Math.floor(val / 10);
+    const o = val % 10;
+    return digits_ch[t] + digits_ch[o];
+}
+
+let speechTimer = null;
+function speakScore(val) {
+    const text = scoreToSpeech(val);
+    // 泡泡
+    const bubble = document.getElementById('speechBubble');
+    document.getElementById('speechBubbleText').textContent = '🔊 ' + text;
+    bubble.classList.remove('hidden-el');
+    const icon = bubble.querySelector('[data-lucide="volume-2"]');
+    if (icon) { icon.classList.remove('voice-pulse'); void icon.offsetWidth; icon.classList.add('voice-pulse'); }
+    clearTimeout(speechTimer);
+    speechTimer = setTimeout(() => bubble.classList.add('hidden-el'), 1800);
+
+    if (!voiceEnabled) return;
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'zh-TW';
+        utter.rate = 1.0;
+        utter.pitch = 1;
+        const voices = window.speechSynthesis.getVoices();
+        const twVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+        if (twVoice) utter.voice = twVoice;
+        window.speechSynthesis.speak(utter);
+    }
+}
+
+// ── 警告音 ──
+function playErrorBeep() {
+    try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        [[380,220,0,0.18],[300,180,0.22,0.40]].forEach(([f1,f2,start,end]) => {
+            const o = ac.createOscillator(), g = ac.createGain();
+            o.connect(g); g.connect(ac.destination);
+            o.type = 'square';
+            o.frequency.setValueAtTime(f1, ac.currentTime + start);
+            o.frequency.linearRampToValueAtTime(f2, ac.currentTime + end);
+            g.gain.setValueAtTime(0.35, ac.currentTime + start);
+            g.gain.linearRampToValueAtTime(0, ac.currentTime + end);
+            o.start(ac.currentTime + start); o.stop(ac.currentTime + end);
+        });
+    } catch(e) {}
+}
+
+let errTimer = null;
+function triggerInputError(msg = '輸入錯誤！') {
+    playErrorBeep();
+    document.getElementById('errorMsg').textContent = msg;
+    const eb = document.getElementById('errorBubble');
+    eb.classList.remove('hidden-el');
+    clearTimeout(errTimer);
+    errTimer = setTimeout(() => eb.classList.add('hidden-el'), 2200);
+    // 搖晃兩格
+    const row = document.getElementById('digitRow');
+    row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
+    boxes.forEach(b => { b.classList.add('error'); setTimeout(() => b.classList.remove('error'), 1400); });
+    row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
+}
+
+// ── 設定彈窗 ──
+document.getElementById('openSettings').onclick   = openSettingsModal;
+document.getElementById('closeSettings').onclick  = closeSettingsModal;
+document.getElementById('settingsModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('settingsModal')) closeSettingsModal();
+});
+
+function openSettingsModal() {
+    document.getElementById('settingsModal').classList.add('open');
+    lucide.createIcons();
+}
+function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('open');
+    updateModeLabels();
+    // 關閉後把焦點還給輸入框
+    if (inputMode === 'free') {
+        setTimeout(() => document.getElementById('freeInput').focus(), 50);
+    }
+}
+
+// ── 歷史紀錄 ──
+document.getElementById('toggleHistory').onclick = () => { isHistoryVisible = !isHistoryVisible; renderHistory(); };
+document.getElementById('clearAll').onclick = () => { scores = []; renderAll(); };
+
+// ── 組距 ──
+document.getElementById('addInterval').onclick = () => {
+    intervals.push({ id: Date.now().toString(), label:'新組距', min:0, max:0 });
+    renderIntervals(); renderChart();
+};
+
+// ── 匯出圖片 ──
+document.getElementById('exportImageBtn').onclick = exportImage;
+
+// ── 渲染 ──
+function renderAll() {
+    renderStats(); renderHistory(); renderChart(); renderIntervals();
+}
+
+function renderStats() {
+    const n = scores.length;
+    const avg = n > 0 ? (scores.reduce((a,b)=>a+b,0)/n).toFixed(2) : 0;
+    document.getElementById('totalCount').textContent = n;
+    document.getElementById('averageScore').textContent = avg;
+}
+
+function renderHistory() {
+    const btn     = document.getElementById('historyBtnContent');
+    const clearBtn= document.getElementById('clearAll');
+    const list    = document.getElementById('historyListContainer');
+    const ph      = document.getElementById('historyPlaceholder');
+    const card    = document.getElementById('historyCard');
+    if (isHistoryVisible) {
+        list.classList.remove('hidden-el'); ph.classList.add('hidden-el'); card.classList.add('h-64');
+        btn.innerHTML = '<i data-lucide="eye-off" size="14"></i> 隱藏';
+        clearBtn.classList.remove('hidden-el');
+        list.innerHTML = scores.length === 0
+            ? `<div class="h-full flex items-center justify-center text-slate-400 text-sm">尚未輸入任何成績</div>`
+            : scores.map((s,i) => `
+                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-medium text-slate-400 w-6">#${scores.length-i}</span>
+                        <span class="font-bold text-slate-700 text-lg">${s}</span>
+                    </div>
+                    <button onclick="deleteScore(${i})" class="text-slate-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50 transition-colors">
+                        <i data-lucide="x" size="18"></i>
+                    </button>
+                </div>`).join('');
+    } else {
+        list.classList.add('hidden-el'); ph.classList.remove('hidden-el'); card.classList.remove('h-64');
+        btn.innerHTML = '<i data-lucide="eye" size="14"></i> 顯示';
+        clearBtn.classList.add('hidden-el');
+    }
+    lucide.createIcons();
+}
+
+function deleteScore(i) { scores.splice(i,1); renderAll(); }
+
+function renderChart() {
+    let cat = 0;
+    const dist = intervals.map(inv => {
+        const c = scores.filter(s => s >= inv.min && s <= inv.max).length;
+        cat += c; return {...inv, count:c};
+    });
+    const maxC = Math.max(...dist.map(d=>d.count), 1);
+    const unc  = scores.length - cat;
+
+    document.getElementById('distributionChart').innerHTML = dist.map(item => `
+        <div>
+            <div class="flex justify-between text-sm font-medium text-slate-600 mb-1">
+                <span>${item.label}</span>
+                <span class="font-bold text-slate-900">${item.count} 人</span>
+            </div>
+            <div class="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-500 rounded-full transition-all duration-500"
+                     style="width:${(item.count/maxC)*100}%"></div>
+            </div>
+        </div>`).join('');
+
+    const warn = document.getElementById('uncategorizedWarning');
+    if (unc > 0) { warn.classList.remove('hidden-el'); document.getElementById('uncategorizedCount').textContent = unc; }
+    else warn.classList.add('hidden-el');
+}
+
+function renderIntervals() {
+    document.getElementById('intervalsList').innerHTML = intervals.map(inv => `
+        <div class="grid grid-cols-12 gap-2 items-center">
+            <div class="col-span-4">
+                <input type="text" value="${inv.label}" onchange="updateInterval('${inv.id}','label',this.value)"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
+            </div>
+            <div class="col-span-3">
+                <input type="number" value="${inv.min}" onchange="updateInterval('${inv.id}','min',this.value)"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
+            </div>
+            <div class="col-span-3">
+                <input type="number" value="${inv.max}" onchange="updateInterval('${inv.id}','max',this.value)"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
+            </div>
+            <div class="col-span-2 flex justify-center">
+                <button onclick="removeInterval('${inv.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <i data-lucide="trash-2" size="16"></i>
+                </button>
+            </div>
+        </div>`).join('');
+    lucide.createIcons();
+}
+
+function updateInterval(id, field, value) {
+    const inv = intervals.find(i=>i.id===id);
+    if (inv) { inv[field] = field==='label' ? value : parseFloat(value)||0; renderChart(); }
+}
+function removeInterval(id) { intervals = intervals.filter(i=>i.id!==id); renderIntervals(); renderChart(); }
+
+// ── 匯出圖片 ──
+function exportImage() {
+    const subject = document.getElementById('subjectName').value.trim() || '成績統計';
+    const n = scores.length;
+    const avg = n > 0 ? (scores.reduce((a,b)=>a+b,0)/n).toFixed(2) : '0';
+    const dist = intervals.map(inv => ({
+        label: inv.label,
+        count: scores.filter(s => s >= inv.min && s <= inv.max).length
+    }));
+    const maxC = Math.max(...dist.map(d=>d.count), 1);
+
+    const canvas = document.getElementById('exportCanvas');
+    const W = 640, pad = 40, headerH = 130, barH = 40, barGap = 18;
+    const H = headerH + dist.length*(barH+barGap) + 60;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath(); ctx.roundRect(0,0,W,6,[0,0,4,4]); ctx.fill();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 26px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(subject + '　成績分布', pad, 50);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '15px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.fillText(`總人數：${n} 人`, pad, 80);
+    ctx.fillText(`平均分數：${avg}`, pad+160, 80);
+
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad,100); ctx.lineTo(W-pad,100); ctx.stroke();
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.textAlign = 'left'; ctx.fillText('組距', pad, 122);
+    ctx.textAlign = 'right'; ctx.fillText('人數', W-pad, 122);
+
+    const barX = pad+80, barW = W-pad-120;
+    dist.forEach((item,i) => {
+        const y = headerH + i*(barH+barGap);
+        const bw = (item.count/maxC)*barW;
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 15px "Noto Sans TC","PingFang TC",sans-serif';
+        ctx.textAlign = 'left'; ctx.fillText(item.label, pad, y+barH/2+6);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath(); ctx.roundRect(barX,y,barW,barH,8); ctx.fill();
+        if (bw>0) {
+            const g = ctx.createLinearGradient(barX,0,barX+bw,0);
+            g.addColorStop(0,'#3b82f6'); g.addColorStop(1,'#60a5fa');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.roundRect(barX,y,bw,barH,8); ctx.fill();
+        }
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 15px "Noto Sans TC","PingFang TC",sans-serif';
+        ctx.textAlign = 'right'; ctx.fillText(item.count+' 人', W-pad, y+barH/2+6);
+    });
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '12px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('成績統計與組距計算　' + new Date().toLocaleDateString('zh-TW'), W/2, H-20);
+
+    const link = document.createElement('a');
+    link.download = subject + '_成績分布.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+</script>
 </body>
 </html>
