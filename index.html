@@ -70,6 +70,16 @@
             backdrop-filter:blur(2px);
         }
         #settingsModal.open { display:flex; }
+
+        /* 貼上彈窗 */
+        #pasteModal {
+            position:fixed; inset:0; z-index:60;
+            background:rgba(15,23,42,0.45);
+            display:none; align-items:center; justify-content:center;
+            backdrop-filter:blur(2px);
+        }
+        #pasteModal.open { display:flex; }
+
         .modal-box {
             background:#fff; border-radius:20px;
             width:min(560px,95vw); max-height:90vh;
@@ -77,7 +87,127 @@
             box-shadow:0 20px 60px rgba(0,0,0,0.2);
         }
 
+        /* 活頁標籤 */
+        .tab-btn {
+            flex: 1;
+            padding: 10px 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.2s;
+            color: #64748b;
+            background: transparent;
+            border: 2px solid transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: #2563eb;
+            border-color: #bfdbfe;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.1);
+        }
+        .tab-btn:not(.active):hover {
+            background: rgba(255,255,255,0.5);
+            color: #334155;
+        }
+
         #exportCanvas { display:none; }
+
+        /* 貼上成績預覽 */
+        .paste-preview-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 0.85rem;
+        }
+        .paste-preview-item.valid { border-color: #bbf7d0; background: #f0fdf4; }
+        .paste-preview-item.invalid { border-color: #fecaca; background: #fff5f5; }
+
+        /* 小鍵盤彈窗 */
+        #numpadModal {
+            position: fixed; inset: 0; z-index: 70;
+            background: rgba(15,23,42,0.5);
+            display: none; align-items: flex-end; justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        #numpadModal.open { display: flex; }
+
+        #numpadPanel {
+            width: 100%; max-width: 420px;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            padding: 0 16px 32px;
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+            animation: slideUp 0.25s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .np-drag-handle {
+            width: 40px; height: 4px; background: #cbd5e1;
+            border-radius: 2px; margin: 12px auto 16px;
+        }
+
+        /* 顯示區 */
+        #numpadDisplay {
+            display: flex; align-items: center; gap: 10px;
+            background: #f8fafc; border: 2px solid #e2e8f0;
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 14px;
+        }
+        #numpadDisplayVal {
+            flex: 1; font-size: 2.6rem; font-weight: 900;
+            color: #1e293b; text-align: center; letter-spacing: 4px;
+            min-height: 52px; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #numpadDisplayVal.placeholder { color: #cbd5e1; letter-spacing: 0; font-size: 1.4rem; font-weight: 500; }
+
+        /* 按鍵格 */
+        .np-btn {
+            border: none; outline: none; cursor: pointer;
+            border-radius: 14px;
+            font-size: 1.6rem; font-weight: 800;
+            height: 64px;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.08s, opacity 0.08s, background 0.1s;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        .np-btn:active { transform: scale(0.92); opacity: 0.75; }
+        .np-btn-num  { background: #f1f5f9; color: #1e293b; }
+        .np-btn-num:hover { background: #e2e8f0; }
+        .np-btn-dot  { background: #f1f5f9; color: #475569; font-size: 1.8rem; }
+        .np-btn-del  { background: #fee2e2; color: #dc2626; font-size: 1.3rem; }
+        .np-btn-del:hover { background: #fecaca; }
+        .np-btn-100  { background: #ede9fe; color: #7c3aed; font-size: 1.1rem; font-weight: 900; }
+        .np-btn-100:hover { background: #ddd6fe; }
+        .np-btn-ok   { background: #2563eb; color: #fff; font-size: 1.1rem; font-weight: 900; }
+        .np-btn-ok:hover { background: #1d4ed8; }
+        .np-btn-ok:active { background: #1e40af; }
+
+        /* 小鍵盤啟動按鈕 */
+        #openNumpadBtn {
+            position: fixed; right: 20px; bottom: 28px; z-index: 40;
+            width: 58px; height: 58px;
+            background: #2563eb; color: #fff;
+            border: none; border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(37,99,235,0.45);
+            cursor: pointer; display: none;
+            align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        #openNumpadBtn:active { transform: scale(0.9); }
+        #openNumpadBtn.visible { display: flex; }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
@@ -91,16 +221,25 @@
             </div>
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
-                <p class="text-sm text-slate-500" id="headerHint">輸入兩位數成績；個位數加 0（如 06）；100 分按 /</p>
+                <p class="text-sm text-slate-500" id="headerHint">兩位數快速模式</p>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <button id="exportImageBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm transition-colors">
-                <i data-lucide="image" size="18"></i>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+            <button id="exportTxtBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="file-down" size="16"></i>
+                <span class="hidden sm:inline">匯出TXT</span>
+            </button>
+            <label id="importTxtBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 shadow-sm transition-colors cursor-pointer text-sm">
+                <i data-lucide="file-up" size="16"></i>
+                <span class="hidden sm:inline">匯入TXT</span>
+                <input type="file" id="importTxtInput" accept=".txt" class="hidden">
+            </label>
+            <button id="exportImageBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="image" size="16"></i>
                 <span class="hidden sm:inline">匯出圖片</span>
             </button>
-            <button id="openSettings" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">
-                <i data-lucide="settings" size="18"></i>
+            <button id="openSettings" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm transition-colors text-sm">
+                <i data-lucide="settings" size="16"></i>
                 <span class="hidden sm:inline">設定</span>
             </button>
         </div>
@@ -111,24 +250,38 @@
         <!-- 左側 -->
         <div class="lg:col-span-5 space-y-6">
 
-            <!-- 成績輸入卡片 -->
+            <!-- 成績輸入卡片（活頁標籤） -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div class="flex items-center justify-between mb-4">
-                    <label class="text-sm font-semibold text-slate-700">新增成績</label>
+                <!-- 活頁標籤列 -->
+                <div class="flex bg-slate-100 rounded-xl p-1 gap-1 mb-5">
+                    <button class="tab-btn active" id="tab2digit" onclick="switchTab('twodigit')">
+                        <i data-lucide="zap" size="14"></i> 兩位數快速
+                    </button>
+                    <button class="tab-btn" id="tabFree" onclick="switchTab('free')">
+                        <i data-lucide="edit-3" size="14"></i> 自由輸入
+                    </button>
+                    <button class="tab-btn" id="tabPaste" onclick="switchTab('paste')">
+                        <i data-lucide="clipboard-list" size="14"></i> 批次貼上
+                    </button>
+                </div>
+
+                <!-- 語音狀態 -->
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-sm font-semibold text-slate-700" id="tabHintLabel">新增成績</label>
                     <div class="flex items-center gap-1.5 text-xs" id="voiceIndicator">
                         <i data-lucide="volume-2" size="14" id="voiceIcon" class="text-slate-400"></i>
                         <span id="voiceStatusText" class="text-slate-400">語音提示：關</span>
                     </div>
                 </div>
 
-                <!-- 兩格數字輸入（兩位數模式）-->
+                <!-- ── Tab 1: 兩格數字輸入（兩位數模式）── -->
                 <div id="digitRow" class="flex items-center justify-center gap-4">
                     <div class="digit-box active" id="d0">_</div>
                     <div class="digit-box" id="d1">_</div>
                 </div>
 
-                <!-- 自由輸入模式 -->
-                <div id="freeRow" class="hidden-el flex items-center justify-center gap-3">
+                <!-- ── Tab 2: 自由輸入模式 ── -->
+                <div id="freeRow" class="hidden-el items-center justify-center gap-3">
                     <input id="freeInput" type="text" inputmode="decimal"
                         class="w-48 h-20 text-4xl font-black text-center border-3 border-slate-200 rounded-2xl bg-slate-50 text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_#bfdbfe] transition-all"
                         style="border-width:3px"
@@ -139,6 +292,29 @@
                         <i data-lucide="corner-down-left" size="20"></i>
                         Enter
                     </button>
+                </div>
+
+                <!-- ── Tab 3: 批次貼上模式 ── -->
+                <div id="pasteRow" class="hidden-el space-y-3">
+                    <div class="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                        每行一個成績，依序對應座號 1、2、3…；空白行會跳過；支援整數與小數。
+                    </div>
+                    <textarea id="pasteTextarea"
+                        class="w-full h-36 px-3 py-2.5 text-sm border-2 border-slate-200 rounded-xl bg-white text-slate-800 outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_#bfdbfe] transition-all resize-none font-mono leading-relaxed custom-scrollbar"
+                        placeholder="92&#10;95&#10;88&#10;65&#10;91"
+                        autocomplete="off" spellcheck="false"></textarea>
+                    <div id="pastePreviewBox" class="hidden-el space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar"></div>
+                    <div class="flex gap-2">
+                        <button id="pastePreviewBtn"
+                            class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="eye" size="16"></i> 預覽
+                        </button>
+                        <button id="pasteSubmitBtn"
+                            class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="check-circle" size="16"></i> 全部匯入
+                        </button>
+                    </div>
+                    <div id="pasteResultMsg" class="hidden-el text-sm px-3 py-2 rounded-lg"></div>
                 </div>
 
                 <!-- 回饋訊息 -->
@@ -225,7 +401,7 @@
                     <i data-lucide="volume-2" class="text-blue-500" size="20"></i>
                     <div>
                         <p class="text-sm font-semibold text-slate-700">語音提示</p>
-                        <p class="text-xs text-slate-500 mt-0.5">輸入成績後自動朗讀數字（兩字速讀）</p>
+                        <p class="text-xs text-slate-500 mt-0.5">輸入成績後自動朗讀數字</p>
                     </div>
                 </div>
                 <label class="toggle-switch">
@@ -235,29 +411,19 @@
             </div>
         </div>
 
-        <!-- 輸入模式 -->
-        <div class="mb-5 p-4 bg-violet-50 rounded-xl border border-violet-100">
-            <div class="flex items-center gap-3 mb-3">
-                <i data-lucide="keyboard" class="text-violet-500" size="20"></i>
-                <div>
-                    <p class="text-sm font-semibold text-slate-700">輸入模式</p>
-                    <p class="text-xs text-slate-500 mt-0.5">選擇適合的成績輸入方式</p>
+        <!-- 小鍵盤 -->
+        <div class="mb-5 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="grid-3x3" class="text-emerald-500" size="20"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">手機小鍵盤</p>
+                        <p class="text-xs text-slate-500 mt-0.5">顯示浮動按鈕，點擊開啟數字鍵盤彈窗</p>
+                    </div>
                 </div>
-            </div>
-            <div class="flex flex-col gap-2">
-                <label class="flex items-start gap-3 p-3 bg-white rounded-xl border-2 cursor-pointer transition-colors hover:border-violet-300" id="modeLabel2digit">
-                    <input type="radio" name="inputMode" value="twodigit" id="mode2digit" class="mt-0.5 accent-violet-600">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-700">兩位數快速模式</p>
-                        <p class="text-xs text-slate-500 mt-0.5">打完第二個數字自動送出，不需按 Enter。個位數補零（如 06），100 分按 /</p>
-                    </div>
-                </label>
-                <label class="flex items-start gap-3 p-3 bg-white rounded-xl border-2 cursor-pointer transition-colors hover:border-violet-300" id="modeLabelFree">
-                    <input type="radio" name="inputMode" value="free" id="modeFree" class="mt-0.5 accent-violet-600">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-700">自由輸入模式</p>
-                        <p class="text-xs text-slate-500 mt-0.5">支援小數點（如 85.5），輸入完畢後按 Enter 送出</p>
-                    </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="numpadToggle">
+                    <span class="toggle-slider"></span>
                 </label>
             </div>
         </div>
@@ -265,7 +431,7 @@
         <!-- 科目名稱 -->
         <div class="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
             <label class="text-xs font-semibold text-slate-600 block mb-1.5 flex items-center gap-2">
-                <i data-lucide="tag" size="14"></i> 科目名稱（用於匯出圖片）
+                <i data-lucide="tag" size="14"></i> 科目名稱（用於匯出圖片與TXT）
             </label>
             <input type="text" id="subjectName" placeholder="例如：數學" maxlength="20"
                 class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 text-slate-700">
@@ -289,6 +455,66 @@
     </div>
 </div>
 
+<!-- 小鍵盤浮動按鈕 -->
+<button id="openNumpadBtn" title="開啟小鍵盤">
+    <i data-lucide="grid-3x3" size="26"></i>
+</button>
+
+<!-- 小鍵盤彈窗 -->
+<div id="numpadModal">
+    <div id="numpadPanel">
+        <div class="np-drag-handle"></div>
+
+        <!-- 標題列 -->
+        <div class="flex items-center justify-between mb-3 px-1">
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-slate-700">小鍵盤</span>
+                <span id="numpadModeTag" class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold"></span>
+            </div>
+            <button id="closeNumpad" class="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <i data-lucide="x" size="20"></i>
+            </button>
+        </div>
+
+        <!-- 顯示區 -->
+        <div id="numpadDisplay">
+            <div id="numpadDisplayVal" class="placeholder">請輸入成績</div>
+        </div>
+
+        <!-- 語音泡泡（小鍵盤版） -->
+        <div id="numpadSpeechBubble" class="hidden-el mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-700 flex items-center gap-2">
+            <i data-lucide="volume-2" size="14" class="text-blue-500"></i>
+            <span id="numpadSpeechText"></span>
+        </div>
+        <div id="numpadErrorBubble" class="hidden-el mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+            <i data-lucide="alert-circle" size="14" class="text-red-500 shrink-0"></i>
+            <span id="numpadErrorMsg">輸入錯誤！</span>
+        </div>
+
+        <!-- 鍵盤格 (4×4) -->
+        <div class="grid grid-cols-4 gap-2.5">
+            <!-- row 1 -->
+            <button class="np-btn np-btn-num" onclick="npPress('7')">7</button>
+            <button class="np-btn np-btn-num" onclick="npPress('8')">8</button>
+            <button class="np-btn np-btn-num" onclick="npPress('9')">9</button>
+            <button class="np-btn np-btn-del" onclick="npDel()"><i data-lucide="delete" size="22"></i></button>
+            <!-- row 2 -->
+            <button class="np-btn np-btn-num" onclick="npPress('4')">4</button>
+            <button class="np-btn np-btn-num" onclick="npPress('5')">5</button>
+            <button class="np-btn np-btn-num" onclick="npPress('6')">6</button>
+            <button class="np-btn np-btn-100 row-span-2" id="npBtn100" onclick="npPress100()" style="height:auto;min-height:138px;font-size:1rem;">100<br><span style="font-size:0.7rem;opacity:0.7">滿分</span></button>
+            <!-- row 3 -->
+            <button class="np-btn np-btn-num" onclick="npPress('1')">1</button>
+            <button class="np-btn np-btn-num" onclick="npPress('2')">2</button>
+            <button class="np-btn np-btn-num" onclick="npPress('3')">3</button>
+            <!-- row 4 -->
+            <button class="np-btn np-btn-dot col-span-2" id="npBtnDot" onclick="npPress('.')">．</button>
+            <button class="np-btn np-btn-num" onclick="npPress('0')">0</button>
+            <button class="np-btn np-btn-ok" onclick="npSubmit()">送出<br><span style="font-size:0.7rem;opacity:0.8">Enter</span></button>
+        </div>
+    </div>
+</div>
+
 <canvas id="exportCanvas"></canvas>
 
 <script>
@@ -303,7 +529,11 @@ let intervals = [
 ];
 let isHistoryVisible = false;
 let voiceEnabled = false;
-let inputMode = 'twodigit'; // 'twodigit' | 'free'
+let numpadEnabled = false;
+let inputMode = 'twodigit'; // 'twodigit' | 'free' | 'paste'
+
+// ── 小鍵盤狀態 ──
+let npBuffer = ''; // 當前輸入緩衝
 
 // ── 兩格輸入狀態 ──
 let digits = ['', ''];
@@ -321,56 +551,408 @@ window.onload = () => {
     updateVoiceUI();
     resetDigits();
     document.addEventListener('keydown', onKey);
-    // 模式 radio 監聽
-    document.querySelectorAll('input[name="inputMode"]').forEach(r => {
-        r.addEventListener('change', e => { setInputMode(e.target.value); });
-    });
+
     // 自由輸入 Enter 按鈕
     document.getElementById('freeSubmit').onclick = submitFreeInput;
-    // 自由輸入框 Enter 鍵
     document.getElementById('freeInput').addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); submitFreeInput(); }
     });
-    // 預設選中兩位數模式
-    document.getElementById('mode2digit').checked = true;
-    updateModeLabels();
+
+    // 批次貼上
+    document.getElementById('pastePreviewBtn').onclick = doPastePreview;
+    document.getElementById('pasteSubmitBtn').onclick = doPasteSubmit;
+    document.getElementById('pasteTextarea').addEventListener('input', () => {
+        document.getElementById('pastePreviewBox').classList.add('hidden-el');
+        document.getElementById('pasteResultMsg').classList.add('hidden-el');
+    });
+
+    // 匯出 / 匯入 TXT
+    document.getElementById('exportTxtBtn').onclick = exportTxt;
+    document.getElementById('importTxtInput').addEventListener('change', importTxt);
+
+    // 小鍵盤
+    document.getElementById('numpadToggle').addEventListener('change', e => {
+        numpadEnabled = e.target.checked;
+        updateNumpadUI();
+    });
+    document.getElementById('openNumpadBtn').onclick = openNumpad;
+    document.getElementById('closeNumpad').onclick   = closeNumpad;
+    document.getElementById('numpadModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('numpadModal')) closeNumpad();
+    });
+
+    // 初始顯示狀態
+    document.getElementById('digitRow').style.display = 'flex';
+    document.getElementById('freeRow').style.display  = 'none';
+    document.getElementById('pasteRow').style.display = 'none';
+
     updateHeaderHint();
 };
 
-// ── 切換輸入模式 ──
-function setInputMode(mode) {
+// ── 活頁切換 ──
+function switchTab(mode) {
     inputMode = mode;
-    const digitRow = document.getElementById('digitRow');
-    const freeRow  = document.getElementById('freeRow');
-    if (mode === 'twodigit') {
-        digitRow.classList.remove('hidden-el');
-        freeRow.classList.add('hidden-el');
-        resetDigits();
-    } else {
-        digitRow.classList.add('hidden-el');
-        freeRow.classList.remove('hidden-el');
-        const fi = document.getElementById('freeInput');
-        fi.value = '';
-        setTimeout(() => fi.focus(), 50);
-    }
-    updateModeLabels();
-    updateHeaderHint();
-}
 
-function updateModeLabels() {
-    const l2 = document.getElementById('modeLabel2digit');
-    const lf = document.getElementById('modeLabelFree');
-    if (l2) l2.style.borderColor = inputMode === 'twodigit' ? '#7c3aed' : '#e2e8f0';
-    if (lf) lf.style.borderColor = inputMode === 'free'     ? '#7c3aed' : '#e2e8f0';
+    // 更新 tab 樣式
+    ['twodigit','free','paste'].forEach(m => {
+        const btn = document.getElementById(m === 'twodigit' ? 'tab2digit' : m === 'free' ? 'tabFree' : 'tabPaste');
+        btn.classList.toggle('active', m === mode);
+    });
+
+    // 顯示對應面板（用 display 直接控制，避免 flex/hidden 衝突）
+    document.getElementById('digitRow').style.display = mode === 'twodigit' ? 'flex' : 'none';
+    document.getElementById('freeRow').style.display  = mode === 'free'     ? 'flex' : 'none';
+    document.getElementById('pasteRow').style.display = mode === 'paste'    ? 'block': 'none';
+
+    // 標籤文字
+    const labelMap = { twodigit:'新增成績', free:'新增成績', paste:'批次貼上成績' };
+    document.getElementById('tabHintLabel').textContent = labelMap[mode];
+
+    if (mode === 'twodigit') { resetDigits(); }
+    if (mode === 'free') { setTimeout(() => document.getElementById('freeInput').focus(), 50); }
+    if (mode === 'paste') { setTimeout(() => document.getElementById('pasteTextarea').focus(), 50); }
+
+    updateHeaderHint();
+    lucide.createIcons();
 }
 
 function updateHeaderHint() {
     const hint = document.getElementById('headerHint');
     if (inputMode === 'twodigit') {
         hint.textContent = '兩位數快速模式：個位數補零（如 06）；100 分按 /；輸入第二位自動送出';
-    } else {
+    } else if (inputMode === 'free') {
         hint.textContent = '自由輸入模式：支援小數（如 85.5），按 Enter 送出';
+    } else {
+        hint.textContent = '批次貼上模式：每行一個成績，依序對應座號';
     }
+}
+
+// ── 批次貼上 ──
+function parsePasteLines() {
+    const raw = document.getElementById('pasteTextarea').value;
+    const lines = raw.split('\n');
+    const result = [];
+    let seatNum = 1;
+    lines.forEach((line, idx) => {
+        const trimmed = line.trim();
+        if (trimmed === '') return; // 跳過空白行
+        const val = parseFloat(trimmed);
+        const isValid = !isNaN(val) && val >= 0 && val <= 100;
+        result.push({ seat: seatNum, raw: trimmed, val: isValid ? val : null, valid: isValid });
+        seatNum++;
+    });
+    return result;
+}
+
+function doPastePreview() {
+    const items = parsePasteLines();
+    const box = document.getElementById('pastePreviewBox');
+    if (items.length === 0) { box.classList.add('hidden-el'); return; }
+    box.classList.remove('hidden-el');
+    box.innerHTML = items.map(item => `
+        <div class="paste-preview-item ${item.valid ? 'valid' : 'invalid'}">
+            <span class="text-slate-500 text-xs w-12">${item.valid ? `#${item.seat}` : '❌'}</span>
+            <span class="font-bold ${item.valid ? 'text-slate-700' : 'text-red-500'}">${item.raw}</span>
+            <span class="text-xs ${item.valid ? 'text-emerald-600' : 'text-red-400'}">${item.valid ? '有效' : '無效'}</span>
+        </div>`).join('');
+    lucide.createIcons();
+}
+
+function doPasteSubmit() {
+    const items = parsePasteLines();
+    const valid = items.filter(i => i.valid);
+    const invalid = items.filter(i => !i.valid);
+
+    if (valid.length === 0) {
+        showPasteMsg('沒有有效成績可匯入，請確認格式。', false);
+        return;
+    }
+
+    valid.forEach(item => scores.unshift(item.val));
+    renderAll();
+
+    document.getElementById('pasteTextarea').value = '';
+    document.getElementById('pastePreviewBox').classList.add('hidden-el');
+
+    const msg = invalid.length > 0
+        ? `✅ 成功匯入 ${valid.length} 筆，跳過 ${invalid.length} 筆無效資料。`
+        : `✅ 成功匯入 ${valid.length} 筆成績！`;
+    showPasteMsg(msg, true);
+}
+
+function showPasteMsg(msg, ok) {
+    const el = document.getElementById('pasteResultMsg');
+    el.textContent = msg;
+    el.className = `text-sm px-3 py-2 rounded-lg ${ok ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-red-50 border border-red-200 text-red-700'}`;
+    el.classList.remove('hidden-el');
+    setTimeout(() => el.classList.add('hidden-el'), 4000);
+}
+
+// ── 匯出 TXT ──
+function exportTxt() {
+    if (scores.length === 0) {
+        alert('尚未輸入任何成績！');
+        return;
+    }
+    const subject = document.getElementById('subjectName').value.trim() || '成績';
+    const n = scores.length;
+    const avg = (scores.reduce((a,b)=>a+b,0)/n).toFixed(2);
+    // scores 是 unshift 進去的（最新在最前），要還原座號順序需反轉
+    const ordered = [...scores].reverse();
+    const lines = [
+        `# ${subject} 成績統計`,
+        `# 匯出時間：${new Date().toLocaleString('zh-TW')}`,
+        `# 總人數：${n}，平均：${avg}`,
+        ``,
+        ...ordered.map((s, i) => `${i+1}\t${s}`)
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${subject}_成績.txt`; a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── 匯入 TXT ──
+function importTxt(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const text = ev.target.result;
+        const lines = text.split('\n');
+        let imported = 0, skipped = 0;
+        const newScores = [];
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed === '' || trimmed.startsWith('#')) return;
+            // 支援「座號\t成績」或只有成績
+            const parts = trimmed.split('\t');
+            const rawVal = parts.length >= 2 ? parts[1] : parts[0];
+            const val = parseFloat(rawVal);
+            if (!isNaN(val) && val >= 0 && val <= 100) {
+                newScores.push(val);
+                imported++;
+            } else {
+                skipped++;
+            }
+        });
+        // 反轉後 unshift（讓座號小的在列表底部，最後輸入的在頂部）
+        [...newScores].reverse().forEach(v => scores.unshift(v));
+        renderAll();
+        alert(`匯入完成！\n✅ 成功：${imported} 筆\n${skipped > 0 ? `⚠️ 跳過：${skipped} 筆` : ''}`);
+        e.target.value = ''; // 清除，允許重複選同一檔案
+    };
+    reader.readAsText(file, 'utf-8');
+}
+
+// ── 小鍵盤 ──
+function updateNumpadUI() {
+    const btn = document.getElementById('openNumpadBtn');
+    if (numpadEnabled) btn.classList.add('visible');
+    else { btn.classList.remove('visible'); closeNumpad(); }
+    lucide.createIcons();
+}
+
+function openNumpad() {
+    npBuffer = '';
+    renderNumpadDisplay();
+    // 更新模式標籤
+    const tagMap = { twodigit:'兩位數快速', free:'自由輸入', paste:'批次貼上' };
+    document.getElementById('numpadModeTag').textContent = tagMap[inputMode] || '';
+    // 自由輸入模式才顯示小數點按鈕
+    const dotBtn = document.getElementById('npBtnDot');
+    dotBtn.style.display = inputMode === 'free' ? '' : 'none';
+    // 100分按鈕：兩位數和自由輸入都有，批次貼上也允許
+    document.getElementById('numpadModal').classList.add('open');
+    lucide.createIcons();
+}
+
+function closeNumpad() {
+    document.getElementById('numpadModal').classList.remove('open');
+    npBuffer = '';
+}
+
+function renderNumpadDisplay() {
+    const el = document.getElementById('numpadDisplayVal');
+    if (npBuffer === '') {
+        el.textContent = '請輸入成績';
+        el.classList.add('placeholder');
+    } else {
+        // 兩位數模式：顯示在兩格裡
+        if (inputMode === 'twodigit') {
+            const d0 = npBuffer[0] || '_';
+            const d1 = npBuffer[1] || '_';
+            el.innerHTML = `<span style="display:inline-flex;gap:12px;">
+                <span style="width:52px;height:60px;border:3px solid ${npBuffer.length>=1?'#94a3b8':'#e2e8f0'};border-radius:12px;background:${npBuffer.length>=1?'#fff':'#f8fafc'};display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:900;color:#1e293b;">${d0}</span>
+                <span style="width:52px;height:60px;border:3px solid ${npBuffer.length>=2?'#94a3b8':npBuffer.length===1?'#3b82f6':'#e2e8f0'};border-radius:12px;background:${npBuffer.length>=2?'#fff':npBuffer.length===1?'#fff':'#f8fafc'};display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:900;color:#1e293b;box-shadow:${npBuffer.length===1?'0 0 0 3px #bfdbfe':'none'}">${d1}</span>
+            </span>`;
+        } else {
+            el.textContent = npBuffer;
+        }
+        el.classList.remove('placeholder');
+    }
+}
+
+function npPress(key) {
+    if (inputMode === 'twodigit') {
+        // 兩位數模式：最多兩個數字
+        if (key === '.') return; // 不允許小數
+        if (npBuffer.length >= 2) return;
+        npBuffer += key;
+        renderNumpadDisplay();
+        // 填好第二位自動送出
+        if (npBuffer.length === 2) {
+            const val = parseInt(npBuffer);
+            setTimeout(() => {
+                npSubmitValue(val);
+            }, 120);
+        }
+    } else {
+        // 自由輸入 / 批次貼上：自由打
+        if (key === '.' && npBuffer.includes('.')) return;
+        if (key === '.' && npBuffer === '') { npBuffer = '0'; }
+        if (npBuffer.length >= 6) return;
+        npBuffer += key;
+        renderNumpadDisplay();
+    }
+}
+
+function npPress100() {
+    npBuffer = '100';
+    renderNumpadDisplay();
+    setTimeout(() => npSubmitValue(100), 120);
+}
+
+function npDel() {
+    if (npBuffer.length === 0) return;
+    npBuffer = npBuffer.slice(0, -1);
+    renderNumpadDisplay();
+    hideNumpadFeedback();
+}
+
+function npSubmit() {
+    if (inputMode === 'twodigit') {
+        if (npBuffer.length === 0) return;
+        if (npBuffer.length === 1) {
+            // 單位數：視為 0X
+            const val = parseInt('0' + npBuffer);
+            npSubmitValue(val);
+            return;
+        }
+        npSubmitValue(parseInt(npBuffer));
+    } else {
+        if (npBuffer === '' || npBuffer === '.') return;
+        const val = parseFloat(npBuffer);
+        npSubmitValue(val);
+    }
+}
+
+function npSubmitValue(val) {
+    if (isNaN(val) || val < 0 || val > 100) {
+        showNumpadError('分數必須介於 0 ~ 100！');
+        npBuffer = '';
+        renderNumpadDisplay();
+        return;
+    }
+
+    if (inputMode === 'paste') {
+        // 批次貼上模式：加到 textarea
+        const ta = document.getElementById('pasteTextarea');
+        ta.value = ta.value ? ta.value + '\n' + val : String(val);
+        showNumpadSpeech('已加入 ' + val);
+        npBuffer = '';
+        renderNumpadDisplay();
+        return;
+    }
+
+    // twodigit / free：直接提交
+    closeNumpad();
+    commitScore(val);
+}
+
+let npSpeechTimer = null;
+function showNumpadSpeech(msg) {
+    const el = document.getElementById('numpadSpeechBubble');
+    document.getElementById('numpadSpeechText').textContent = msg;
+    el.classList.remove('hidden-el');
+    clearTimeout(npSpeechTimer);
+    npSpeechTimer = setTimeout(() => el.classList.add('hidden-el'), 1800);
+}
+
+let npErrTimer = null;
+function showNumpadError(msg) {
+    playErrorBeep();
+    const el = document.getElementById('numpadErrorBubble');
+    document.getElementById('numpadErrorMsg').textContent = msg;
+    el.classList.remove('hidden-el');
+    clearTimeout(npErrTimer);
+    npErrTimer = setTimeout(() => el.classList.add('hidden-el'), 2200);
+    // 抖動顯示區
+    const disp = document.getElementById('numpadDisplay');
+    disp.classList.remove('shake'); void disp.offsetWidth; disp.classList.add('shake');
+    disp.addEventListener('animationend', () => disp.classList.remove('shake'), { once: true });
+}
+
+function hideNumpadFeedback() {
+    document.getElementById('numpadErrorBubble').classList.add('hidden-el');
+}
+
+// ── 鍵盤輸入處理 ──
+function onKey(e) {
+    const modal = document.getElementById('settingsModal');
+    if (modal.classList.contains('open')) {
+        if (e.key === 'Escape') closeSettingsModal();
+        return;
+    }
+    const numpadModal = document.getElementById('numpadModal');
+    if (numpadModal.classList.contains('open')) {
+        if (e.key === 'Escape') closeNumpad();
+        return;
+    }
+    if (inputMode !== 'twodigit') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const key = e.key;
+
+    if (key === '/') {
+        e.preventDefault();
+        commitScore(100);
+        return;
+    }
+
+    if (/^[0-9]$/.test(key)) {
+        e.preventDefault();
+        if (curPos === 0) {
+            digits[0] = key; digits[1] = ''; curPos = 1; renderBoxes();
+        } else {
+            digits[1] = key; renderBoxes();
+            const val = parseInt(digits[0] + digits[1]);
+            setTimeout(() => commitScore(val), 60);
+        }
+        return;
+    }
+
+    if (key === 'Backspace') {
+        e.preventDefault();
+        if (curPos === 1 && digits[1] !== '') { digits[1] = ''; renderBoxes(); }
+        else if (curPos === 1 && digits[1] === '') { digits[0] = ''; curPos = 0; renderBoxes(); }
+        else if (curPos === 0) { digits[0] = ''; renderBoxes(); }
+        return;
+    }
+}
+
+// ── 提交分數 ──
+function commitScore(val) {
+    if (isNaN(val) || val < 0 || val > 100) {
+        triggerInputError('分數必須介於 0 ~ 100 之間！');
+        resetDigits();
+        return;
+    }
+    speakScore(val);
+    scores.unshift(val);
+    renderAll();
+    resetDigits();
 }
 
 // ── 自由輸入提交 ──
@@ -400,80 +982,7 @@ function renderBoxes() {
 }
 
 function resetDigits() {
-    digits = ['', ''];
-    curPos = 0;
-    renderBoxes();
-}
-
-// ── 鍵盤輸入處理 ──
-function onKey(e) {
-    // 設定彈窗開著時，只攔截 Escape
-    const modal = document.getElementById('settingsModal');
-    if (modal.classList.contains('open')) {
-        if (e.key === 'Escape') closeSettingsModal();
-        return;
-    }
-    // 自由輸入模式：讓 freeInput 自行處理，不攔截
-    if (inputMode === 'free') return;
-    // 不要干擾彈窗內的 input
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    const key = e.key;
-
-    // 100分：按 /
-    if (key === '/') {
-        e.preventDefault();
-        commitScore(100);
-        return;
-    }
-
-    // 數字鍵 0-9
-    if (/^[0-9]$/.test(key)) {
-        e.preventDefault();
-        if (curPos === 0) {
-            digits[0] = key;
-            digits[1] = '';
-            curPos = 1;
-            renderBoxes();
-        } else {
-            digits[1] = key;
-            renderBoxes();
-            // 第二位填好，自動提交
-            const val = parseInt(digits[0] + digits[1]);
-            setTimeout(() => commitScore(val), 60);
-        }
-        return;
-    }
-
-    // Backspace
-    if (key === 'Backspace') {
-        e.preventDefault();
-        if (curPos === 1 && digits[1] !== '') {
-            digits[1] = '';
-            renderBoxes();
-        } else if (curPos === 1 && digits[1] === '') {
-            digits[0] = '';
-            curPos = 0;
-            renderBoxes();
-        } else if (curPos === 0) {
-            digits[0] = '';
-            renderBoxes();
-        }
-        return;
-    }
-}
-
-// ── 提交分數 ──
-function commitScore(val) {
-    if (isNaN(val) || val < 0 || val > 100) {
-        triggerInputError('分數必須介於 0 ~ 100 之間！');
-        resetDigits();
-        return;
-    }
-    speakScore(val);
-    scores.unshift(val);
-    renderAll();
-    resetDigits();
+    digits = ['', '']; curPos = 0; renderBoxes();
 }
 
 // ── 語音 ──
@@ -489,24 +998,57 @@ function updateVoiceUI() {
     document.getElementById('voiceIcon').className = on ? 'text-blue-500' : 'text-slate-400';
 }
 
-// 語音文字規則：
-// 100 → 一百
-// 個位數 (1~9) → 「X分」（例如 6 → 六分）
-// 兩位數 (10~99) → 直接唸十位、個位（例如 86 → 八六）
+// ── 語音文字轉換（支援小數、整十）──
 function scoreToSpeech(val) {
     const digits_ch = ['零','一','二','三','四','五','六','七','八','九'];
+    const tens_ch   = ['','十','二十','三十','四十','五十','六十','七十','八十','九十'];
+
     if (val === 100) return '一百';
-    if (val < 10)   return digits_ch[val] + '分';
-    // 兩位數：直接唸十位、個位（兩字）
+
+    // 處理小數
+    const isDecimal = (val % 1 !== 0);
+    if (isDecimal) {
+        // 例如 95.5 → "九五點五"，85.25 → "八五點二五"
+        const str = val.toString();
+        const [intPart, decPart] = str.split('.');
+        const intNum = parseInt(intPart);
+        const intText = numToSpeech(intNum);
+        const decText = decPart.split('').map(d => digits_ch[parseInt(d)]).join('');
+        return intText + '點' + decText;
+    }
+
+    return numToSpeech(val);
+}
+
+function numToSpeech(val) {
+    const digits_ch = ['零','一','二','三','四','五','六','七','八','九'];
+    const tens_ch   = ['','十','二十','三十','四十','五十','六十','七十','八十','九十'];
+
+    if (val === 100) return '一百';
+    if (val === 0) return '零分';
+    if (val < 10) return digits_ch[val] + '分';
+
     const t = Math.floor(val / 10);
     const o = val % 10;
-    return digits_ch[t] + digits_ch[o];
+
+    // 兩位數模式：直接唸（八六、九五）
+    // 自由輸入模式：整十唸成「X十」（九十、八十），非整十唸數字（八六）
+    if (inputMode === 'twodigit') {
+        // 快速模式：兩字速讀
+        return digits_ch[t] + digits_ch[o];
+    } else {
+        // 自由輸入模式：整十唸自然語
+        if (o === 0) {
+            return tens_ch[t]; // 九十、八十
+        } else {
+            return digits_ch[t] + digits_ch[o]; // 八六、九五
+        }
+    }
 }
 
 let speechTimer = null;
 function speakScore(val) {
     const text = scoreToSpeech(val);
-    // 泡泡
     const bubble = document.getElementById('speechBubble');
     document.getElementById('speechBubbleText').textContent = '🔊 ' + text;
     bubble.classList.remove('hidden-el');
@@ -554,11 +1096,12 @@ function triggerInputError(msg = '輸入錯誤！') {
     eb.classList.remove('hidden-el');
     clearTimeout(errTimer);
     errTimer = setTimeout(() => eb.classList.add('hidden-el'), 2200);
-    // 搖晃兩格
-    const row = document.getElementById('digitRow');
-    row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
-    boxes.forEach(b => { b.classList.add('error'); setTimeout(() => b.classList.remove('error'), 1400); });
-    row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
+    if (inputMode === 'twodigit') {
+        const row = document.getElementById('digitRow');
+        row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
+        boxes.forEach(b => { b.classList.add('error'); setTimeout(() => b.classList.remove('error'), 1400); });
+        row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
+    }
 }
 
 // ── 設定彈窗 ──
@@ -574,11 +1117,7 @@ function openSettingsModal() {
 }
 function closeSettingsModal() {
     document.getElementById('settingsModal').classList.remove('open');
-    updateModeLabels();
-    // 關閉後把焦點還給輸入框
-    if (inputMode === 'free') {
-        setTimeout(() => document.getElementById('freeInput').focus(), 50);
-    }
+    if (inputMode === 'free') setTimeout(() => document.getElementById('freeInput').focus(), 50);
 }
 
 // ── 歷史紀錄 ──
