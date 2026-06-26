@@ -208,6 +208,14 @@
         }
         #openNumpadBtn:active { transform: scale(0.9); }
         #openNumpadBtn.visible { display: flex; }
+        /* 匯出選項彈窗 */
+        #exportOptModal {
+            position: fixed; inset: 0; z-index: 80;
+            background: rgba(15,23,42,0.45);
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        #exportOptModal.open { display: flex; }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
@@ -318,9 +326,10 @@
                 </div>
 
                 <!-- 回饋訊息 -->
-                <div id="speechBubble" class="hidden-el mt-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700 flex items-center gap-2">
-                    <i data-lucide="volume-2" size="14" class="text-blue-500 voice-pulse"></i>
+                <div id="speechBubble" class="hidden-el mt-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 flex items-center gap-2">
+                    <i data-lucide="check-circle" size="14" class="text-emerald-500 shrink-0"></i>
                     <span id="speechBubbleText"></span>
+                    <i data-lucide="volume-2" size="14" id="speechVoiceIcon" class="text-emerald-400 ml-auto hidden-el voice-pulse"></i>
                 </div>
                 <div id="errorBubble" class="hidden-el mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
                     <i data-lucide="alert-circle" size="14" class="text-red-500 shrink-0"></i>
@@ -515,6 +524,40 @@
     </div>
 </div>
 
+<!-- 匯出選項彈窗 -->
+<div id="exportOptModal">
+    <div class="modal-box" style="max-width:340px;">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="file-down" class="text-violet-500" size="20"></i> 匯出 TXT
+            </h2>
+            <button onclick="document.getElementById('exportOptModal').classList.remove('open')"
+                class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <i data-lucide="x" size="20"></i>
+            </button>
+        </div>
+        <p class="text-sm text-slate-500 mb-4">請選擇匯出格式：</p>
+        <div class="space-y-3">
+            <button onclick="doExportTxt(true)"
+                class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-violet-400 hover:bg-violet-50 transition-all text-left group">
+                <i data-lucide="list-ordered" size="20" class="text-slate-400 group-hover:text-violet-500 mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-semibold text-slate-700 text-sm">包含座號</p>
+                    <p class="text-xs text-slate-400 mt-0.5">每行：<code class="bg-slate-100 px-1 rounded">座號&nbsp;&nbsp;成績</code>，方便匯回或對照</p>
+                </div>
+            </button>
+            <button onclick="doExportTxt(false)"
+                class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left group">
+                <i data-lucide="align-justify" size="20" class="text-slate-400 group-hover:text-blue-500 mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-semibold text-slate-700 text-sm">僅成績</p>
+                    <p class="text-xs text-slate-400 mt-0.5">每行一個數字，方便直接複製貼到其他地方</p>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
 <canvas id="exportCanvas"></canvas>
 
 <script>
@@ -690,21 +733,24 @@ function showPasteMsg(msg, ok) {
 
 // ── 匯出 TXT ──
 function exportTxt() {
-    if (scores.length === 0) {
-        alert('尚未輸入任何成績！');
-        return;
-    }
+    if (scores.length === 0) { alert('尚未輸入任何成績！'); return; }
+    // 顯示選項彈窗
+    document.getElementById('exportOptModal').classList.add('open');
+    lucide.createIcons();
+}
+
+function doExportTxt(withSeat) {
+    document.getElementById('exportOptModal').classList.remove('open');
     const subject = document.getElementById('subjectName').value.trim() || '成績';
     const n = scores.length;
     const avg = (scores.reduce((a,b)=>a+b,0)/n).toFixed(2);
-    // scores 是 unshift 進去的（最新在最前），要還原座號順序需反轉
     const ordered = [...scores].reverse();
     const lines = [
         `# ${subject} 成績統計`,
         `# 匯出時間：${new Date().toLocaleString('zh-TW')}`,
         `# 總人數：${n}，平均：${avg}`,
         ``,
-        ...ordered.map((s, i) => `${i+1}\t${s}`)
+        ...ordered.map((s, i) => withSeat ? `${i+1}\t${s}` : `${s}`)
     ];
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -866,18 +912,30 @@ function npSubmitValue(val) {
         return;
     }
 
-    // twodigit / free：直接提交
-    closeNumpad();
+    // twodigit / free：提交後留在鍵盤繼續輸入
+    npBuffer = '';
+    renderNumpadDisplay();
+    hideNumpadFeedback();
     commitScore(val);
 }
 
 let npSpeechTimer = null;
-function showNumpadSpeech(msg) {
+function showNumpadSpeech(msg, ttsText) {
     const el = document.getElementById('numpadSpeechBubble');
     document.getElementById('numpadSpeechText').textContent = msg;
     el.classList.remove('hidden-el');
     clearTimeout(npSpeechTimer);
-    npSpeechTimer = setTimeout(() => el.classList.add('hidden-el'), 1800);
+    npSpeechTimer = setTimeout(() => el.classList.add('hidden-el'), 2000);
+
+    if (ttsText && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(ttsText);
+        utter.lang = 'zh-TW'; utter.rate = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const twVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+        if (twVoice) utter.voice = twVoice;
+        window.speechSynthesis.speak(utter);
+    }
 }
 
 let npErrTimer = null;
@@ -949,8 +1007,28 @@ function commitScore(val) {
         resetDigits();
         return;
     }
-    speakScore(val);
     scores.unshift(val);
+    const seatNum = scores.length; // 第幾號（unshift 後長度即為最新座號）
+
+    // 成功時隱藏錯誤泡泡
+    document.getElementById('errorBubble').classList.add('hidden-el');
+
+    // 語音提示：小鍵盤開著時顯示在彈窗內
+    if (document.getElementById('numpadModal').classList.contains('open')) {
+        const text = scoreToSpeech(val);
+        showNumpadSpeech(`第 ${seatNum} 號　${val} 分　✅`);
+        if (voiceEnabled && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'zh-TW'; utter.rate = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const twVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+            if (twVoice) utter.voice = twVoice;
+            window.speechSynthesis.speak(utter);
+        }
+    } else {
+        speakScore(val, seatNum);
+    }
     renderAll();
     resetDigits();
 }
@@ -1033,29 +1111,31 @@ function numToSpeech(val) {
 
     // 兩位數模式：直接唸（八六、九五）
     // 自由輸入模式：整十唸成「X十」（九十、八十），非整十唸數字（八六）
-    if (inputMode === 'twodigit') {
-        // 快速模式：兩字速讀
-        return digits_ch[t] + digits_ch[o];
+    // 整十一律唸自然語（九十、八十），非整十兩字速讀（八六、九五）
+    if (o === 0) {
+        return tens_ch[t];
     } else {
-        // 自由輸入模式：整十唸自然語
-        if (o === 0) {
-            return tens_ch[t]; // 九十、八十
-        } else {
-            return digits_ch[t] + digits_ch[o]; // 八六、九五
-        }
+        return digits_ch[t] + digits_ch[o];
     }
 }
 
 let speechTimer = null;
-function speakScore(val) {
+function speakScore(val, seatNum) {
     const text = scoreToSpeech(val);
     const bubble = document.getElementById('speechBubble');
-    document.getElementById('speechBubbleText').textContent = '🔊 ' + text;
+    const msgEl  = document.getElementById('speechBubbleText');
+    const voiceIconEl = document.getElementById('speechVoiceIcon');
+
+    msgEl.textContent = `第 ${seatNum} 號　${val} 分　輸入成功`;
+    if (voiceEnabled) {
+        voiceIconEl.classList.remove('hidden-el');
+        voiceIconEl.classList.remove('voice-pulse'); void voiceIconEl.offsetWidth; voiceIconEl.classList.add('voice-pulse');
+    } else {
+        voiceIconEl.classList.add('hidden-el');
+    }
     bubble.classList.remove('hidden-el');
-    const icon = bubble.querySelector('[data-lucide="volume-2"]');
-    if (icon) { icon.classList.remove('voice-pulse'); void icon.offsetWidth; icon.classList.add('voice-pulse'); }
     clearTimeout(speechTimer);
-    speechTimer = setTimeout(() => bubble.classList.add('hidden-el'), 1800);
+    speechTimer = setTimeout(() => bubble.classList.add('hidden-el'), 2000);
 
     if (!voiceEnabled) return;
     if ('speechSynthesis' in window) {
@@ -1091,6 +1171,9 @@ function playErrorBeep() {
 let errTimer = null;
 function triggerInputError(msg = '輸入錯誤！') {
     playErrorBeep();
+    // 隱藏成功泡泡
+    document.getElementById('speechBubble').classList.add('hidden-el');
+    clearTimeout(speechTimer);
     document.getElementById('errorMsg').textContent = msg;
     const eb = document.getElementById('errorBubble');
     eb.classList.remove('hidden-el');
