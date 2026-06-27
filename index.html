@@ -325,15 +325,11 @@
                     <div id="pasteResultMsg" class="hidden-el text-sm px-3 py-2 rounded-lg"></div>
                 </div>
 
-                <!-- 回饋訊息 -->
-                <div id="speechBubble" class="hidden-el mt-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 flex items-center gap-2">
-                    <i data-lucide="check-circle" size="14" class="text-emerald-500 shrink-0"></i>
-                    <span id="speechBubbleText"></span>
+                <!-- 回饋訊息（成功 / 錯誤共用） -->
+                <div id="feedbackBubble" class="hidden-el mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+                    <i data-lucide="check-circle" size="14" id="feedbackIcon" class="shrink-0"></i>
+                    <span id="feedbackMsg"></span>
                     <i data-lucide="volume-2" size="14" id="speechVoiceIcon" class="text-emerald-400 ml-auto hidden-el voice-pulse"></i>
-                </div>
-                <div id="errorBubble" class="hidden-el mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
-                    <i data-lucide="alert-circle" size="14" class="text-red-500 shrink-0"></i>
-                    <span id="errorMsg">輸入錯誤！</span>
                 </div>
             </div>
 
@@ -898,8 +894,12 @@ function npSubmit() {
 }
 
 function npSubmitValue(val) {
-    if (isNaN(val) || val < 0 || val > 100) {
-        showNumpadError('分數必須介於 0 ~ 100！');
+    let npErrMsg = '';
+    if (isNaN(val)) npErrMsg = '❌ 格式錯誤：無法識別為數字';
+    else if (val < 0) npErrMsg = '❌ 分數不可為負數（' + val + '）';
+    else if (val > 100) npErrMsg = '❌ 分數超過上限 100（' + val + '）';
+    if (npErrMsg) {
+        showNumpadError(npErrMsg);
         npBuffer = '';
         renderNumpadDisplay();
         return;
@@ -1012,8 +1012,18 @@ function syncPasteTextarea() {
 
 // ── 提交分數 ──
 function commitScore(val) {
-    if (isNaN(val) || val < 0 || val > 100) {
-        triggerInputError('分數必須介於 0 ~ 100 之間！');
+    if (isNaN(val)) {
+        triggerInputError('❌ 格式錯誤：無法識別為數字');
+        resetDigits();
+        return;
+    }
+    if (val < 0) {
+        triggerInputError('❌ 分數不可為負數（輸入值：' + val + '）');
+        resetDigits();
+        return;
+    }
+    if (val > 100) {
+        triggerInputError('❌ 分數超過上限 100（輸入值：' + val + '）');
         resetDigits();
         return;
     }
@@ -1024,7 +1034,7 @@ function commitScore(val) {
     syncPasteTextarea();
 
     // 成功時隱藏錯誤泡泡
-    document.getElementById('errorBubble').classList.add('hidden-el');
+    
 
     // 語音提示：小鍵盤開著時顯示在彈窗內
     if (document.getElementById('numpadModal').classList.contains('open')) {
@@ -1052,8 +1062,18 @@ function submitFreeInput() {
     const raw = fi.value.trim();
     if (raw === '') return;
     const val = parseFloat(raw);
-    if (isNaN(val) || val < 0 || val > 100) {
-        triggerInputError('分數必須介於 0 ~ 100 之間！');
+    if (isNaN(val)) {
+        triggerInputError('❌ 格式錯誤：「' + raw + '」不是有效數字');
+        fi.select();
+        return;
+    }
+    if (val < 0) {
+        triggerInputError('❌ 分數不可為負數（輸入值：' + val + '）');
+        fi.select();
+        return;
+    }
+    if (val > 100) {
+        triggerInputError('❌ 分數超過上限 100（輸入值：' + val + '）');
         fi.select();
         return;
     }
@@ -1132,23 +1152,40 @@ function numToSpeech(val) {
     }
 }
 
+// ── 統一回饋泡泡 ──
+let feedbackTimer = null;
+function showFeedback(isSuccess, msg) {
+    const bubble = document.getElementById('feedbackBubble');
+    const icon   = document.getElementById('feedbackIcon');
+    const msgEl  = document.getElementById('feedbackMsg');
+    msgEl.textContent = msg;
+    if (isSuccess) {
+        bubble.className = 'mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700';
+        icon.setAttribute('data-lucide', 'check-circle');
+        icon.className = 'shrink-0 text-emerald-500';
+    } else {
+        bubble.className = 'mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-red-50 border border-red-200 text-red-700';
+        icon.setAttribute('data-lucide', 'alert-circle');
+        icon.className = 'shrink-0 text-red-500';
+    }
+    lucide.createIcons();
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => bubble.classList.add('hidden-el'), isSuccess ? 2000 : 2800);
+}
+
 let speechTimer = null;
 function speakScore(val, seatNum) {
     const text = scoreToSpeech(val);
-    const bubble = document.getElementById('speechBubble');
-    const msgEl  = document.getElementById('speechBubbleText');
     const voiceIconEl = document.getElementById('speechVoiceIcon');
 
-    msgEl.textContent = `第 ${seatNum} 號　${val} 分　輸入成功`;
+    showFeedback(true, `第 ${seatNum} 號　${val} 分　✅ 輸入成功`);
+
     if (voiceEnabled) {
         voiceIconEl.classList.remove('hidden-el');
         voiceIconEl.classList.remove('voice-pulse'); void voiceIconEl.offsetWidth; voiceIconEl.classList.add('voice-pulse');
     } else {
         voiceIconEl.classList.add('hidden-el');
     }
-    bubble.classList.remove('hidden-el');
-    clearTimeout(speechTimer);
-    speechTimer = setTimeout(() => bubble.classList.add('hidden-el'), 2000);
 
     if (!voiceEnabled) return;
     if ('speechSynthesis' in window) {
@@ -1181,17 +1218,10 @@ function playErrorBeep() {
     } catch(e) {}
 }
 
-let errTimer = null;
 function triggerInputError(msg = '輸入錯誤！') {
     playErrorBeep();
-    // 隱藏成功泡泡
-    document.getElementById('speechBubble').classList.add('hidden-el');
     clearTimeout(speechTimer);
-    document.getElementById('errorMsg').textContent = msg;
-    const eb = document.getElementById('errorBubble');
-    eb.classList.remove('hidden-el');
-    clearTimeout(errTimer);
-    errTimer = setTimeout(() => eb.classList.add('hidden-el'), 2200);
+    showFeedback(false, msg);
     if (inputMode === 'twodigit') {
         const row = document.getElementById('digitRow');
         row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
