@@ -410,7 +410,7 @@
         </div>
 
         <!-- 語音提示 -->
-        <div class="mb-5 p-4 bg-blue-50 rounded-xl border border-blue-100">
+        <div class="mb-5 p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <i data-lucide="volume-2" class="text-blue-500" size="20"></i>
@@ -423,6 +423,38 @@
                     <input type="checkbox" id="voiceToggle">
                     <span class="toggle-slider"></span>
                 </label>
+            </div>
+            <!-- 聲線選擇（語音開啟時顯示） -->
+            <div id="voicePickerWrap" class="hidden pt-1 border-t border-blue-100 space-y-2">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-slate-600">聲線選擇</p>
+                    <button id="voiceTestBtn" class="text-xs px-2.5 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-colors flex items-center gap-1">
+                        <i data-lucide="play" size="11"></i> 試聽
+                    </button>
+                </div>
+                <select id="voiceSelect"
+                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white text-slate-700 outline-none focus:border-blue-500 cursor-pointer">
+                    <option value="">— 載入聲線中… —</option>
+                </select>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 mb-1">語速</p>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="voiceRate" min="0.5" max="2" step="0.1" value="1"
+                                class="flex-1 h-1.5 accent-blue-500 cursor-pointer">
+                            <span id="voiceRateVal" class="text-xs font-mono text-blue-700 w-8 text-right">1.0</span>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 mb-1">音調</p>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="voicePitch" min="0.5" max="2" step="0.1" value="1"
+                                class="flex-1 h-1.5 accent-blue-500 cursor-pointer">
+                            <span id="voicePitchVal" class="text-xs font-mono text-blue-700 w-8 text-right">1.0</span>
+                        </div>
+                    </div>
+                </div>
+                <p id="voicePickerHint" class="text-xs text-slate-400 leading-relaxed"></p>
             </div>
         </div>
 
@@ -574,6 +606,9 @@ let intervals = [
 ];
 let isHistoryVisible = false;
 let voiceEnabled = false;
+let selectedVoice = null;  // 使用者選擇的聲線
+let voiceRate  = 1.0;
+let voicePitch = 1.0;
 let numpadEnabled = false;
 let inputMode = 'twodigit'; // 'twodigit' | 'free' | 'paste'
 
@@ -1070,15 +1105,8 @@ function commitScore(val) {
     if (document.getElementById('numpadModal').classList.contains('open')) {
         // 小鍵盤模式：在小鍵盤泡泡 + 主介面同步顯示
         showNumpadSpeech(`第 ${seatNum} 號　${val} 分　✅ 輸入成功`);
-        if (voiceEnabled && 'speechSynthesis' in window) {
-            const text = scoreToSpeech(val);
-            window.speechSynthesis.cancel();
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'zh-TW'; utter.rate = 1.0;
-            const voices = window.speechSynthesis.getVoices();
-            const twVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
-            if (twVoice) utter.voice = twVoice;
-            window.speechSynthesis.speak(utter);
+        if (voiceEnabled) {
+            _speakText(scoreToSpeech(val));
         }
     } else {
         speakScore(val, seatNum);
@@ -1131,6 +1159,7 @@ function resetDigits() {
 document.getElementById('voiceToggle').addEventListener('change', e => {
     voiceEnabled = e.target.checked;
     updateVoiceUI();
+    if (voiceEnabled) loadVoices();
 });
 
 function updateVoiceUI() {
@@ -1138,7 +1167,122 @@ function updateVoiceUI() {
     document.getElementById('voiceStatusText').textContent = on ? '語音提示：開' : '語音提示：關';
     document.getElementById('voiceStatusText').className = on ? 'text-blue-600 font-medium' : 'text-slate-400';
     document.getElementById('voiceIcon').className = on ? 'text-blue-500' : 'text-slate-400';
+    const wrap = document.getElementById('voicePickerWrap');
+    if (wrap) wrap.classList.toggle('hidden', !on);
 }
+
+// ── 聲線載入與選擇 ──
+function loadVoices() {
+    const sel = document.getElementById('voiceSelect');
+    if (!sel) return;
+
+    const populate = () => {
+        const all = window.speechSynthesis.getVoices();
+        // 篩選中文聲線（zh-TW, zh-CN, zh-HK, zh）
+        const zhVoices = all.filter(v => v.lang.startsWith('zh'));
+        // 其他語言也保留，以防系統沒有中文
+        const otherVoices = all.filter(v => !v.lang.startsWith('zh'));
+
+        sel.innerHTML = '';
+
+        if (zhVoices.length > 0) {
+            const grp1 = document.createElement('optgroup');
+            grp1.label = '🇹🇼 中文聲線';
+            zhVoices.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                const langTag = v.lang === 'zh-TW' ? '台灣' : v.lang === 'zh-CN' ? '中國' : v.lang === 'zh-HK' ? '香港' : v.lang;
+                opt.textContent = `${v.name}（${langTag}）${v.localService ? '' : ' ☁️'}`;
+                if (selectedVoice && v.name === selectedVoice.name) opt.selected = true;
+                else if (!selectedVoice && i === 0) opt.selected = true;
+                grp1.appendChild(opt);
+            });
+            sel.appendChild(grp1);
+        }
+
+        if (otherVoices.length > 0) {
+            const grp2 = document.createElement('optgroup');
+            grp2.label = '其他語言聲線';
+            otherVoices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.textContent = `${v.name}（${v.lang}）${v.localService ? '' : ' ☁️'}`;
+                if (selectedVoice && v.name === selectedVoice.name) opt.selected = true;
+                grp2.appendChild(opt);
+            });
+            sel.appendChild(grp2);
+        }
+
+        if (all.length === 0) {
+            sel.innerHTML = '<option value="">此裝置無可用聲線</option>';
+        }
+
+        // 預設選第一個中文聲線
+        if (!selectedVoice && zhVoices.length > 0) {
+            selectedVoice = zhVoices[0];
+        }
+
+        // 提示
+        const hint = document.getElementById('voicePickerHint');
+        if (hint) {
+            hint.textContent = zhVoices.length > 0
+                ? `找到 ${zhVoices.length} 個中文聲線。☁️ 表示線上聲線，需網路連線。`
+                : '未找到中文聲線，建議至系統設定下載中文語音包。';
+        }
+    };
+
+    if (window.speechSynthesis.getVoices().length > 0) {
+        populate();
+    } else {
+        window.speechSynthesis.onvoiceschanged = populate;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 聲線選擇變更
+    const sel = document.getElementById('voiceSelect');
+    if (sel) {
+        sel.addEventListener('change', () => {
+            const all = window.speechSynthesis.getVoices();
+            selectedVoice = all.find(v => v.name === sel.value) || null;
+        });
+    }
+
+    // 語速滑桿
+    const rateSlider = document.getElementById('voiceRate');
+    const rateVal    = document.getElementById('voiceRateVal');
+    if (rateSlider) {
+        rateSlider.addEventListener('input', () => {
+            voiceRate = parseFloat(rateSlider.value);
+            rateVal.textContent = voiceRate.toFixed(1);
+        });
+    }
+
+    // 音調滑桿
+    const pitchSlider = document.getElementById('voicePitch');
+    const pitchVal    = document.getElementById('voicePitchVal');
+    if (pitchSlider) {
+        pitchSlider.addEventListener('input', () => {
+            voicePitch = parseFloat(pitchSlider.value);
+            pitchVal.textContent = voicePitch.toFixed(1);
+        });
+    }
+
+    // 試聽按鈕
+    const testBtn = document.getElementById('voiceTestBtn');
+    if (testBtn) {
+        testBtn.addEventListener('click', () => {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance('九十八分，輸入成功');
+            utter.lang  = 'zh-TW';
+            utter.rate  = voiceRate;
+            utter.pitch = voicePitch;
+            if (selectedVoice) utter.voice = selectedVoice;
+            window.speechSynthesis.speak(utter);
+        });
+    }
+});
 
 // ── 語音文字轉換（支援小數、整十）──
 function scoreToSpeech(val) {
@@ -1222,17 +1366,25 @@ function speakScore(val, seatNum) {
     }
 
     if (!voiceEnabled) return;
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'zh-TW';
-        utter.rate = 1.0;
-        utter.pitch = 1;
+    _speakText(text);
+}
+
+// ── 共用 TTS 發聲 ──
+function _speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang  = 'zh-TW';
+    utter.rate  = voiceRate;
+    utter.pitch = voicePitch;
+    if (selectedVoice) {
+        utter.voice = selectedVoice;
+    } else {
         const voices = window.speechSynthesis.getVoices();
-        const twVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
-        if (twVoice) utter.voice = twVoice;
-        window.speechSynthesis.speak(utter);
+        const zhVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+        if (zhVoice) utter.voice = zhVoice;
     }
+    window.speechSynthesis.speak(utter);
 }
 
 // ── 警告音 ──
