@@ -714,8 +714,10 @@ function doPasteSubmit() {
     valid.forEach(item => scores.unshift(item.val));
     renderAll();
 
-    document.getElementById('pasteTextarea').value = '';
     document.getElementById('pastePreviewBox').classList.add('hidden-el');
+
+    // 同步 textarea 顯示最新成績（無座號格式）
+    syncPasteTextarea();
 
     const msg = invalid.length > 0
         ? `✅ 成功匯入 ${valid.length} 筆，跳過 ${invalid.length} 筆無效資料。`
@@ -786,6 +788,7 @@ function importTxt(e) {
         // 反轉後 unshift（讓座號小的在列表底部，最後輸入的在頂部）
         [...newScores].reverse().forEach(v => scores.unshift(v));
         renderAll();
+        syncPasteTextarea();
         alert(`匯入完成！\n✅ 成功：${imported} 筆\n${skipped > 0 ? `⚠️ 跳過：${skipped} 筆` : ''}`);
         e.target.value = ''; // 清除，允許重複選同一檔案
     };
@@ -1000,6 +1003,13 @@ function onKey(e) {
     }
 }
 
+// ── 同步批次貼上 textarea（無座號版本，照輸入順序，最早在上） ──
+function syncPasteTextarea() {
+    const ta = document.getElementById('pasteTextarea');
+    // scores 陣列最新的在 index 0，所以反轉後才是輸入順序（早→晚）
+    ta.value = [...scores].reverse().join('\n');
+}
+
 // ── 提交分數 ──
 function commitScore(val) {
     if (isNaN(val) || val < 0 || val > 100) {
@@ -1009,6 +1019,9 @@ function commitScore(val) {
     }
     scores.unshift(val);
     const seatNum = scores.length; // 第幾號（unshift 後長度即為最新座號）
+
+    // ── 同步更新批次貼上 textarea（無座號格式，最新成績加到最後一行）──
+    syncPasteTextarea();
 
     // 成功時隱藏錯誤泡泡
     document.getElementById('errorBubble').classList.add('hidden-el');
@@ -1205,7 +1218,7 @@ function closeSettingsModal() {
 
 // ── 歷史紀錄 ──
 document.getElementById('toggleHistory').onclick = () => { isHistoryVisible = !isHistoryVisible; renderHistory(); };
-document.getElementById('clearAll').onclick = () => { scores = []; renderAll(); };
+document.getElementById('clearAll').onclick = () => { scores = []; renderAll(); syncPasteTextarea(); };
 
 // ── 組距 ──
 document.getElementById('addInterval').onclick = () => {
@@ -1258,7 +1271,7 @@ function renderHistory() {
     lucide.createIcons();
 }
 
-function deleteScore(i) { scores.splice(i,1); renderAll(); }
+function deleteScore(i) { scores.splice(i,1); renderAll(); syncPasteTextarea(); }
 
 function renderChart() {
     let cat = 0;
