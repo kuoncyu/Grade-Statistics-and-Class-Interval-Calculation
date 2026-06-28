@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成績統計與組距計算</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .hidden-el { display: none; }
+
+        /* 數字輸入格 */
+        .digit-box {
+            width: 72px; height: 88px;
+            font-size: 2.8rem; font-weight: 900;
+            text-align: center;
+            border: 3px solid #e2e8f0;
+            border-radius: 14px;
+            background: #f8fafc;
+            color: #1e293b;
+            outline: none;
+            caret-color: transparent;
+            cursor: default;
+            user-select: none;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            letter-spacing: 0;
+        }
+        .digit-box.active  { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 3px #bfdbfe; }
+        .digit-box.filled  { border-color: #94a3b8; color: #334155; background: #fff; }
+        .digit-box.error   { border-color: #ef4444 !important; background: #fff5f5 !important; color: #dc2626 !important; }
+
+        @keyframes shake {
+            0%,100%{ transform:translateX(0); }
+            20%    { transform:translateX(-8px); }
+            40%    { transform:translateX(8px); }
+            60%    { transform:translateX(-5px); }
+            80%    { transform:translateX(5px); }
+        }
+        .shake { animation: shake 0.4s ease-in-out; }
+
+        @keyframes voicePulse {
+            0%,100%{ transform:scale(1); opacity:1; }
+            50%    { transform:scale(1.15); opacity:0.7; }
+        }
+        .voice-pulse { animation: voicePulse 0.4s ease-in-out; }
+
+        /* toggle switch */
+        .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .toggle-slider {
+            position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
+            background:#cbd5e1; transition:.3s; border-radius:24px;
+        }
+        .toggle-slider:before {
+            position:absolute; content:""; height:18px; width:18px;
+            left:3px; bottom:3px; background:white; transition:.3s; border-radius:50%;
+        }
+        input:checked + .toggle-slider { background:#3b82f6; }
+        input:checked + .toggle-slider:before { transform:translateX(20px); }
+
+        /* 設定彈窗 */
+        #settingsModal {
+            position:fixed; inset:0; z-index:50;
+            background:rgba(15,23,42,0.45);
+            display:none; align-items:center; justify-content:center;
+            backdrop-filter:blur(2px);
+        }
+        #settingsModal.open { display:flex; }
+
+        /* 貼上彈窗 */
+        #pasteModal {
+            position:fixed; inset:0; z-index:60;
+            background:rgba(15,23,42,0.45);
+            display:none; align-items:center; justify-content:center;
+            backdrop-filter:blur(2px);
+        }
+        #pasteModal.open { display:flex; }
+
+        .modal-box {
+            background:#fff; border-radius:20px;
+            width:min(560px,95vw); max-height:90vh;
+            overflow-y:auto; padding:28px;
+            box-shadow:0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        /* 活頁標籤 */
+        .tab-btn {
+            flex: 1;
+            padding: 10px 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.2s;
+            color: #64748b;
+            background: transparent;
+            border: 2px solid transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: #2563eb;
+            border-color: #bfdbfe;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.1);
+        }
+        .tab-btn:not(.active):hover {
+            background: rgba(255,255,255,0.5);
+            color: #334155;
+        }
+
+        #exportCanvas { display:none; }
+
+        /* 貼上成績預覽 */
+        .paste-preview-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 0.85rem;
+        }
+        .paste-preview-item.valid { border-color: #bbf7d0; background: #f0fdf4; }
+        .paste-preview-item.invalid { border-color: #fecaca; background: #fff5f5; }
+
+        /* 小鍵盤彈窗 */
+        #numpadModal {
+            position: fixed; inset: 0; z-index: 70;
+            background: rgba(15,23,42,0.5);
+            display: none; align-items: flex-end; justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        #numpadModal.open { display: flex; }
+
+        #numpadPanel {
+            width: 100%; max-width: 420px;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            padding: 0 16px 32px;
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+            animation: slideUp 0.25s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .np-drag-handle {
+            width: 40px; height: 4px; background: #cbd5e1;
+            border-radius: 2px; margin: 12px auto 16px;
+        }
+
+        /* 顯示區 */
+        #numpadDisplay {
+            display: flex; align-items: center; gap: 10px;
+            background: #f8fafc; border: 2px solid #e2e8f0;
+            border-radius: 16px; padding: 12px 16px; margin-bottom: 14px;
+        }
+        #numpadDisplayVal {
+            flex: 1; font-size: 2.6rem; font-weight: 900;
+            color: #1e293b; text-align: center; letter-spacing: 4px;
+            min-height: 52px; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #numpadDisplayVal.placeholder { color: #cbd5e1; letter-spacing: 0; font-size: 1.4rem; font-weight: 500; }
+
+        /* 按鍵格 */
+        .np-btn {
+            border: none; outline: none; cursor: pointer;
+            border-radius: 14px;
+            font-size: 1.6rem; font-weight: 800;
+            height: 64px;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.08s, opacity 0.08s, background 0.1s;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        .np-btn:active { transform: scale(0.92); opacity: 0.75; }
+        .np-btn-num  { background: #f1f5f9; color: #1e293b; }
+        .np-btn-num:hover { background: #e2e8f0; }
+        .np-btn-dot  { background: #f1f5f9; color: #475569; font-size: 1.8rem; }
+        .np-btn-del  { background: #fee2e2; color: #dc2626; font-size: 1.3rem; }
+        .np-btn-del:hover { background: #fecaca; }
+        .np-btn-100  { background: #ede9fe; color: #7c3aed; font-size: 1.1rem; font-weight: 900; }
+        .np-btn-100:hover { background: #ddd6fe; }
+        .np-btn-ok   { background: #2563eb; color: #fff; font-size: 1.1rem; font-weight: 900; }
+        .np-btn-ok:hover { background: #1d4ed8; }
+        .np-btn-ok:active { background: #1e40af; }
+
+        /* 小鍵盤啟動按鈕 */
+        #openNumpadBtn {
+            position: fixed; right: 20px; bottom: 28px; z-index: 40;
+            width: 58px; height: 58px;
+            background: #2563eb; color: #fff;
+            border: none; border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(37,99,235,0.45);
+            cursor: pointer; display: none;
+            align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        #openNumpadBtn:active { transform: scale(0.9); }
+        #openNumpadBtn.visible { display: flex; }
+        /* 匯出選項彈窗 */
+        #exportOptModal {
+            position: fixed; inset: 0; z-index: 80;
+            background: rgba(15,23,42,0.45);
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        #exportOptModal.open { display: flex; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
+                <i data-lucide="calculator" size="28"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
+                    <span id="batchIndicator" style="display:none" class="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 font-bold rounded-full border border-orange-200"></span>
+                </div>
+                <p class="text-sm text-slate-500" id="headerHint">兩位數快速模式</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+            <button id="exportTxtBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="file-down" size="16"></i>
+                <span class="hidden sm:inline">匯出TXT</span>
+            </button>
+            <label id="importTxtBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 shadow-sm transition-colors cursor-pointer text-sm">
+                <i data-lucide="file-up" size="16"></i>
+                <span class="hidden sm:inline">匯入TXT</span>
+                <input type="file" id="importTxtInput" accept=".txt" class="hidden">
+            </label>
+            <button id="nextBatchBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="skip-forward" size="16"></i>
+                <span class="hidden sm:inline">換下一批</span>
+            </button>
+            <button id="copyAllBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="copy" size="16"></i>
+                <span class="hidden sm:inline">複製成績</span>
+            </button>
+            <button id="exportImageBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="image" size="16"></i>
+                <span class="hidden sm:inline">匯出圖片</span>
+            </button>
+            <button id="openSettings" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm transition-colors text-sm">
+                <i data-lucide="settings" size="16"></i>
+                <span class="hidden sm:inline">設定</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 左側 -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <!-- 成績輸入卡片（活頁標籤） -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <!-- 活頁標籤列 -->
+                <div class="flex bg-slate-100 rounded-xl p-1 gap-1 mb-5">
+                    <button class="tab-btn active" id="tab2digit" onclick="switchTab('twodigit')">
+                        <i data-lucide="zap" size="14"></i> 兩位數快速
+                    </button>
+                    <button class="tab-btn" id="tabFree" onclick="switchTab('free')">
+                        <i data-lucide="edit-3" size="14"></i> 自由輸入
+                    </button>
+                    <button class="tab-btn" id="tabPaste" onclick="switchTab('paste')">
+                        <i data-lucide="clipboard-list" size="14"></i> 批次貼上
+                    </button>
+                </div>
+
+                <!-- 語音狀態 -->
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-sm font-semibold text-slate-700" id="tabHintLabel">新增成績</label>
+                    <div class="flex items-center gap-1.5 text-xs" id="voiceIndicator">
+                        <i data-lucide="volume-2" size="14" id="voiceIcon" class="text-slate-400"></i>
+                        <span id="voiceStatusText" class="text-slate-400">語音提示：關</span>
+                    </div>
+                </div>
+
+                <!-- ── Tab 1: 兩格數字輸入（兩位數模式）── -->
+                <div id="digitRow" class="flex items-center justify-center gap-4">
+                    <div class="digit-box active" id="d0">_</div>
+                    <div class="digit-box" id="d1">_</div>
+                </div>
+
+                <!-- ── Tab 2: 自由輸入模式 ── -->
+                <div id="freeRow" class="hidden-el items-center justify-center gap-3">
+                    <input id="freeInput" type="text" inputmode="decimal"
+                        class="w-48 h-20 text-4xl font-black text-center border-3 border-slate-200 rounded-2xl bg-slate-50 text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_#bfdbfe] transition-all"
+                        style="border-width:3px"
+                        placeholder="0.0"
+                        autocomplete="off" autocorrect="off" spellcheck="false">
+                    <button id="freeSubmit"
+                        class="h-20 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-md shadow-blue-200 transition-colors flex items-center gap-2 text-base">
+                        <i data-lucide="corner-down-left" size="20"></i>
+                        Enter
+                    </button>
+                </div>
+
+                <!-- ── Tab 3: 批次貼上模式 ── -->
+                <div id="pasteRow" class="hidden-el space-y-3">
+                    <div class="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 flex items-center gap-2">
+                        <i data-lucide="info" size="12"></i>
+                        自動同步目前所有成績（無座號）。可全選複製後貼到其他地方。
+                    </div>
+                    <textarea id="pasteTextarea" readonly
+                        class="w-full h-48 px-3 py-2.5 text-sm border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 outline-none resize-none font-mono leading-relaxed custom-scrollbar cursor-text select-all"
+                        placeholder="尚未輸入成績"></textarea>
+                    <div class="flex gap-2">
+                        <button id="pasteCopyCurrentBtn"
+                            class="flex-1 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-md shadow-sky-200 transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="copy" size="16"></i> 複製本批
+                        </button>
+                        <button id="pasteCopyAllBtn"
+                            class="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="layers" size="16"></i> 複製全批
+                        </button>
+                        <button id="pasteClearBtn"
+                            class="py-2.5 px-4 bg-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-500 font-semibold rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="trash-2" size="16"></i>
+                        </button>
+                    </div>
+                    <div id="pasteResultMsg" class="hidden-el text-sm px-3 py-2 rounded-lg"></div>
+                </div>
+
+                <!-- 回饋訊息（成功 / 錯誤共用） -->
+                <div id="feedbackBubble" class="hidden-el mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+                    <i data-lucide="check-circle" size="14" id="feedbackIcon" class="shrink-0"></i>
+                    <span id="feedbackMsg"></span>
+                    <i data-lucide="volume-2" size="14" id="speechVoiceIcon" class="text-emerald-400 ml-auto hidden-el voice-pulse"></i>
+                </div>
+            </div>
+
+            <!-- 統計數字 -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                        <i data-lucide="list-ordered" size="16"></i> 總人數
+                    </span>
+                    <span class="text-4xl font-black text-blue-600"><span id="totalCount">0</span> <span class="text-base font-normal text-slate-400">人</span></span>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" size="16"></i> 平均分數
+                    </span>
+                    <span id="averageScore" class="text-4xl font-black text-emerald-600">0</span>
+                </div>
+            </div>
+
+            <!-- 輸入紀錄（多批次） -->
+            <div id="historyCard" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col transition-all">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-3">
+                        <h3 class="font-semibold text-slate-700">輸入紀錄</h3>
+                        <button id="toggleHistory" class="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors">
+                            <span id="historyBtnContent" class="flex items-center gap-1"><i data-lucide="eye" size="14"></i> 顯示</span>
+                        </button>
+                    </div>
+                    <button id="clearAll" class="hidden-el text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">全部清除</button>
+                </div>
+                <!-- 批次分頁標籤 -->
+                <div id="batchTabsWrap" class="hidden-el mb-2">
+                    <div id="batchTabs" class="flex gap-1 flex-wrap"></div>
+                </div>
+                <div id="historyListContainer" class="hidden-el flex-1 overflow-y-auto pr-2 mt-2 space-y-2 custom-scrollbar"></div>
+                <div id="historyPlaceholder" class="py-4 mt-2 flex justify-center items-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-400 select-none">
+                    基於隱私考量，輸入紀錄已摺疊隱藏
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側：圖表 -->
+        <div class="lg:col-span-7">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
+                    <i data-lucide="bar-chart-3" class="text-blue-500" size="20"></i>
+                    成績分布 (組距)
+                </h2>
+                <div id="distributionChart" class="space-y-4"></div>
+                <div id="uncategorizedWarning" class="hidden-el mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="text-amber-500 shrink-0 mt-0.5" size="18"></i>
+                    <div>
+                        <h4 class="text-sm font-bold text-amber-800">有 <span id="uncategorizedCount">0</span> 筆成績未被分類</h4>
+                        <p class="text-xs text-amber-600 mt-1">請在設定中確認組距範圍涵蓋所有成績。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 版權聲明 -->
+    <div class="text-center py-4 mt-2">
+        <p class="text-xs text-slate-400 tracking-wide">
+            &copy; <span id="_yr"></span> Kuo Po-Hung &#xFF08;郭柏宏&#xFF09; &mdash; All Rights Reserved.
+        </p>
+    </div>
+</div>
+
+<!-- ── 設定彈窗 ── -->
+<div id="settingsModal">
+    <div class="modal-box">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="settings" class="text-blue-500" size="22"></i> 設定
+            </h2>
+            <button id="closeSettings" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <i data-lucide="x" size="22"></i>
+            </button>
+        </div>
+
+        <!-- 語音提示 -->
+        <div class="mb-5 p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="volume-2" class="text-blue-500" size="20"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">語音提示</p>
+                        <p class="text-xs text-slate-500 mt-0.5">輸入成績後自動朗讀數字</p>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="voiceToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <!-- 聲線選擇（語音開啟時顯示） -->
+            <div id="voicePickerWrap" class="hidden pt-1 border-t border-blue-100 space-y-2">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-slate-600">聲線選擇</p>
+                    <button id="voiceTestBtn" class="text-xs px-2.5 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-colors flex items-center gap-1">
+                        <i data-lucide="play" size="11"></i> 試聽
+                    </button>
+                </div>
+                <select id="voiceSelect"
+                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white text-slate-700 outline-none focus:border-blue-500 cursor-pointer">
+                    <option value="">— 載入聲線中… —</option>
+                </select>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 mb-1">語速</p>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="voiceRate" min="0.5" max="2" step="0.1" value="1"
+                                class="flex-1 h-1.5 accent-blue-500 cursor-pointer">
+                            <span id="voiceRateVal" class="text-xs font-mono text-blue-700 w-8 text-right">1.0</span>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 mb-1">音調</p>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="voicePitch" min="0.5" max="2" step="0.1" value="1"
+                                class="flex-1 h-1.5 accent-blue-500 cursor-pointer">
+                            <span id="voicePitchVal" class="text-xs font-mono text-blue-700 w-8 text-right">1.0</span>
+                        </div>
+                    </div>
+                </div>
+                <p id="voicePickerHint" class="text-xs text-slate-400 leading-relaxed"></p>
+            </div>
+        </div>
+
+        <!-- 小鍵盤 -->
+        <div class="mb-5 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="grid-3x3" class="text-emerald-500" size="20"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">手機小鍵盤</p>
+                        <p class="text-xs text-slate-500 mt-0.5">顯示浮動按鈕，點擊開啟數字鍵盤彈窗</p>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="numpadToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 科目名稱 -->
+        <div class="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <label class="text-xs font-semibold text-slate-600 block mb-1.5 flex items-center gap-2">
+                <i data-lucide="tag" size="14"></i> 科目名稱（用於匯出圖片與TXT）
+            </label>
+            <input type="text" id="subjectName" placeholder="例如：數學" maxlength="20"
+                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500 text-slate-700">
+        </div>
+
+        <!-- 組距設定 -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h3 class="text-sm font-semibold text-slate-600 mb-3">自訂組距</h3>
+            <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 mb-2 px-1">
+                <div class="col-span-4">顯示標籤</div>
+                <div class="col-span-3">最小值 (含)</div>
+                <div class="col-span-3">最大值 (含)</div>
+                <div class="col-span-2 text-center">操作</div>
+            </div>
+            <div id="intervalsList" class="space-y-3"></div>
+            <button id="addInterval" class="mt-4 w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-medium hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm">
+                <i data-lucide="plus" size="16"></i> 新增組距
+            </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-4 text-center">修改設定後，長條圖會自動重新統計。</p>
+    </div>
+</div>
+
+<!-- 小鍵盤浮動按鈕 -->
+<button id="openNumpadBtn" title="開啟小鍵盤">
+    <i data-lucide="grid-3x3" size="26"></i>
+</button>
+
+<!-- 小鍵盤彈窗 -->
+<div id="numpadModal">
+    <div id="numpadPanel">
+        <div class="np-drag-handle"></div>
+
+        <!-- 標題列 -->
+        <div class="flex items-center justify-between mb-3 px-1">
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-slate-700">小鍵盤</span>
+                <span id="numpadModeTag" class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold"></span>
+            </div>
+            <button id="closeNumpad" class="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <i data-lucide="x" size="20"></i>
+            </button>
+        </div>
+
+        <!-- 顯示區 -->
+        <div id="numpadDisplay">
+            <div id="numpadDisplayVal" class="placeholder">請輸入成績</div>
+        </div>
+
+        <!-- 回饋泡泡（小鍵盤版，與主介面同步） -->
+        <div id="numpadFeedbackBubble" class="hidden-el mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i data-lucide="check-circle" size="14" id="numpadFeedbackIcon" class="shrink-0"></i>
+            <span id="numpadFeedbackMsg"></span>
+        </div>
+
+        <!-- 鍵盤格 (4×4) -->
+        <div class="grid grid-cols-4 gap-2.5">
+            <!-- row 1 -->
+            <button class="np-btn np-btn-num" onclick="npPress('7')">7</button>
+            <button class="np-btn np-btn-num" onclick="npPress('8')">8</button>
+            <button class="np-btn np-btn-num" onclick="npPress('9')">9</button>
+            <button class="np-btn np-btn-del" onclick="npDel()"><i data-lucide="delete" size="22"></i></button>
+            <!-- row 2 -->
+            <button class="np-btn np-btn-num" onclick="npPress('4')">4</button>
+            <button class="np-btn np-btn-num" onclick="npPress('5')">5</button>
+            <button class="np-btn np-btn-num" onclick="npPress('6')">6</button>
+            <button class="np-btn np-btn-100 row-span-2" id="npBtn100" onclick="npPress100()" style="height:auto;min-height:138px;font-size:1rem;">100<br><span style="font-size:0.7rem;opacity:0.7">滿分</span></button>
+            <!-- row 3 -->
+            <button class="np-btn np-btn-num" onclick="npPress('1')">1</button>
+            <button class="np-btn np-btn-num" onclick="npPress('2')">2</button>
+            <button class="np-btn np-btn-num" onclick="npPress('3')">3</button>
+            <!-- row 4 -->
+            <button class="np-btn np-btn-dot col-span-2" id="npBtnDot" onclick="npPress('.')">．</button>
+            <button class="np-btn np-btn-num" onclick="npPress('0')">0</button>
+            <button class="np-btn np-btn-ok" onclick="npSubmit()">送出<br><span style="font-size:0.7rem;opacity:0.8">Enter</span></button>
+            <!-- 換下一批 -->
+            <button class="np-btn col-span-4" id="npNextBatchBtn" onclick="nextBatch()"
+                style="background:#fff7ed;color:#c2410c;border:2px solid #fed7aa;font-size:0.85rem;font-weight:800;height:52px;">
+                <i data-lucide="skip-forward" size="16" style="display:inline;margin-right:4px;"></i> 換下一批成績
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 匯出選項彈窗 -->
+<div id="exportOptModal">
+    <div class="modal-box" style="max-width:340px;">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="file-down" class="text-violet-500" size="20"></i> 匯出 TXT
+            </h2>
+            <button onclick="document.getElementById('exportOptModal').classList.remove('open')"
+                class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <i data-lucide="x" size="20"></i>
+            </button>
+        </div>
+        <p class="text-sm text-slate-500 mb-4">請選擇匯出格式：</p>
+        <div class="space-y-3">
+            <button onclick="doExportTxt(true)"
+                class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-violet-400 hover:bg-violet-50 transition-all text-left group">
+                <i data-lucide="list-ordered" size="20" class="text-slate-400 group-hover:text-violet-500 mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-semibold text-slate-700 text-sm">包含座號</p>
+                    <p class="text-xs text-slate-400 mt-0.5">每行：<code class="bg-slate-100 px-1 rounded">座號&nbsp;&nbsp;成績</code>，方便匯回或對照</p>
+                </div>
+            </button>
+            <button onclick="doExportTxt(false)"
+                class="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left group">
+                <i data-lucide="align-justify" size="20" class="text-slate-400 group-hover:text-blue-500 mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-semibold text-slate-700 text-sm">僅成績</p>
+                    <p class="text-xs text-slate-400 mt-0.5">每行一個數字，方便直接複製貼到其他地方</p>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<canvas id="exportCanvas"></canvas>
+
+<script>
+// ── 狀態 ──
+// batches: 每個元素是一批成績陣列（最新在 index 0），例如 [[98,90],[87,76]]
+let batches = [[]];         // 至少一批
+let currentBatch = 0;       // 目前檢視/輸入的批次 index
+
+// 方便取得當前批次
+function curScores() { return batches[currentBatch]; }
+
+// 相容舊程式碼的 scores getter（指向當前批次）
+Object.defineProperty(window, 'scores', {
+    get() { return batches[currentBatch]; },
+    set(v) { batches[currentBatch] = v; }
+});
+
+let intervals = [
+    { id:'1', label:'90~100', min:90,   max:100   },
+    { id:'2', label:'80~89',  min:80,   max:89.99 },
+    { id:'3', label:'70~79',  min:70,   max:79.99 },
+    { id:'4', label:'60~69',  min:60,   max:69.99 },
+    { id:'5', label:'<60',    min:-999, max:59.99  }
+];
+let isHistoryVisible = false;
+let voiceEnabled = false;
+let selectedVoice = null;
+let voiceRate  = 1.0;
+let voicePitch = 1.0;
+let numpadEnabled = false;
+let inputMode = 'twodigit'; // 'twodigit' | 'free' | 'paste'
+
+// ── 小鍵盤狀態 ──
+let npBuffer = '';
+
+// ── 兩格輸入狀態 ──
+let digits = ['', ''];
+let curPos = 0;
+
+// ── DOM ──
+const d0 = document.getElementById('d0');
+const d1 = document.getElementById('d1');
+const boxes = [d0, d1];
+
+// ── 初始化 ──
+window.onload = () => {
+    lucide.createIcons();
+    renderAll();
+    updateVoiceUI();
+    resetDigits();
+    document.addEventListener('keydown', onKey);
+
+    // 自由輸入 Enter 按鈕
+    document.getElementById('freeSubmit').onclick = submitFreeInput;
+    document.getElementById('freeInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); submitFreeInput(); }
+    });
+
+    // 換下一批
+    document.getElementById('nextBatchBtn').onclick = nextBatch;
+
+    // 批次貼上（唯讀同步版）
+    document.getElementById('pasteCopyCurrentBtn').onclick = () => copyScores(false);
+    document.getElementById('pasteCopyAllBtn').onclick    = () => copyScores(true);
+    document.getElementById('pasteClearBtn').onclick = clearCurrentBatch;
+
+    // 複製成績（Header 按鈕）
+    document.getElementById('copyAllBtn').onclick = () => copyScores(true);
+
+    // 匯出 / 匯入 TXT
+    document.getElementById('exportTxtBtn').onclick = exportTxt;
+    document.getElementById('importTxtInput').addEventListener('change', importTxt);
+
+    // 小鍵盤
+    document.getElementById('numpadToggle').addEventListener('change', e => {
+        numpadEnabled = e.target.checked;
+        updateNumpadUI();
+    });
+    document.getElementById('openNumpadBtn').onclick = openNumpad;
+    document.getElementById('closeNumpad').onclick   = closeNumpad;
+    document.getElementById('numpadModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('numpadModal')) closeNumpad();
+    });
+
+    // 初始顯示狀態
+    document.getElementById('digitRow').style.display = 'flex';
+    document.getElementById('freeRow').style.display  = 'none';
+    document.getElementById('pasteRow').style.display = 'none';
+
+    updateHeaderHint();
+};
+
+// ── 活頁切換 ──
+function switchTab(mode) {
+    inputMode = mode;
+
+    // 更新 tab 樣式
+    ['twodigit','free','paste'].forEach(m => {
+        const btn = document.getElementById(m === 'twodigit' ? 'tab2digit' : m === 'free' ? 'tabFree' : 'tabPaste');
+        btn.classList.toggle('active', m === mode);
+    });
+
+    // 顯示對應面板（用 display 直接控制，避免 flex/hidden 衝突）
+    document.getElementById('digitRow').style.display = mode === 'twodigit' ? 'flex' : 'none';
+    document.getElementById('freeRow').style.display  = mode === 'free'     ? 'flex' : 'none';
+    document.getElementById('pasteRow').style.display = mode === 'paste'    ? 'block': 'none';
+
+    // 標籤文字
+    const labelMap = { twodigit:'新增成績', free:'新增成績', paste:'批次貼上成績' };
+    document.getElementById('tabHintLabel').textContent = labelMap[mode];
+
+    if (mode === 'twodigit') { resetDigits(); }
+    if (mode === 'free') { setTimeout(() => document.getElementById('freeInput').focus(), 50); }
+    if (mode === 'paste') { setTimeout(() => document.getElementById('pasteTextarea').focus(), 50); }
+
+    updateHeaderHint();
+    lucide.createIcons();
+}
+
+function updateHeaderHint() {
+    const hint = document.getElementById('headerHint');
+    if (inputMode === 'twodigit') {
+        hint.textContent = '兩位數快速模式：個位數補零（如 06）；100 分按 /；輸入第二位自動送出';
+    } else if (inputMode === 'free') {
+        hint.textContent = '自由輸入模式：支援小數（如 85.5），按 Enter 送出';
+    } else {
+        hint.textContent = '批次貼上模式：每行一個成績，依序對應座號';
+    }
+}
+
+// ── 批次貼上 ──
+function parsePasteLines() {
+    const raw = document.getElementById('pasteTextarea').value;
+    const lines = raw.split('\n');
+    const result = [];
+    let seatNum = 1;
+    lines.forEach((line, idx) => {
+        const trimmed = line.trim();
+        if (trimmed === '') return; // 跳過空白行
+        const val = parseFloat(trimmed);
+        const isValid = !isNaN(val) && val >= 0 && val <= 100;
+        result.push({ seat: seatNum, raw: trimmed, val: isValid ? val : null, valid: isValid });
+        seatNum++;
+    });
+    return result;
+}
+
+function doPastePreview() {
+    const items = parsePasteLines();
+    const box = document.getElementById('pastePreviewBox');
+    if (items.length === 0) { box.classList.add('hidden-el'); return; }
+    box.classList.remove('hidden-el');
+    box.innerHTML = items.map(item => `
+        <div class="paste-preview-item ${item.valid ? 'valid' : 'invalid'}">
+            <span class="text-slate-500 text-xs w-12">${item.valid ? `#${item.seat}` : '❌'}</span>
+            <span class="font-bold ${item.valid ? 'text-slate-700' : 'text-red-500'}">${item.raw}</span>
+            <span class="text-xs ${item.valid ? 'text-emerald-600' : 'text-red-400'}">${item.valid ? '有效' : '無效'}</span>
+        </div>`).join('');
+    lucide.createIcons();
+}
+
+function doPasteSubmit() {
+    const items = parsePasteLines();
+    const valid = items.filter(i => i.valid);
+    const invalid = items.filter(i => !i.valid);
+
+    if (valid.length === 0) {
+        showPasteMsg('沒有有效成績可匯入，請確認格式。', false);
+        return;
+    }
+
+    valid.forEach(item => curScores().unshift(item.val));
+    renderAll();
+
+    document.getElementById('pastePreviewBox').classList.add('hidden-el');
+
+    // 同步 textarea 顯示最新成績（無座號格式）
+    syncPasteTextarea();
+
+    const msg = invalid.length > 0
+        ? `✅ 成功匯入 ${valid.length} 筆，跳過 ${invalid.length} 筆無效資料。`
+        : `✅ 成功匯入 ${valid.length} 筆成績！`;
+    showPasteMsg(msg, true);
+}
+
+function showPasteMsg(msg, ok) {
+    const el = document.getElementById('pasteResultMsg');
+    el.textContent = msg;
+    el.className = `text-sm px-3 py-2 rounded-lg ${ok ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-red-50 border border-red-200 text-red-700'}`;
+    el.classList.remove('hidden-el');
+    setTimeout(() => el.classList.add('hidden-el'), 4000);
+}
+
+// ── 換下一批 ──
+function nextBatch() {
+    // 若當前批次是空的就不新增
+    if (curScores().length === 0) {
+        showFeedback(false, '❌ 目前這批尚未輸入成績，請先輸入再換批');
+        return;
+    }
+    batches.push([]);
+    currentBatch = batches.length - 1;
+    renderAll();
+    syncPasteTextarea();
+    showFeedback(true, `✅ 已切換到第 ${currentBatch + 1} 批，開始輸入新成績`);
+    // 小鍵盤也同步提示
+    if (document.getElementById('numpadModal').classList.contains('open')) {
+        showNumpadFeedback(true, `第 ${currentBatch + 1} 批開始`);
+    }
+}
+
+// ── 清除當前批次 ──
+function clearCurrentBatch() {
+    batches[currentBatch] = [];
+    // 若只剩一批且是空的，維持即可；多批就移除這批
+    if (batches.length > 1) {
+        batches.splice(currentBatch, 1);
+        currentBatch = Math.min(currentBatch, batches.length - 1);
+    }
+    renderAll();
+    syncPasteTextarea();
+}
+
+// ── 複製成績（Excel 格式）──
+// copyAll=false → 只複製當前批次（直排）
+// copyAll=true  → 所有批次橫排（各批一欄，批次由左至右，同批同一欄直排）
+function copyScores(copyAll) {
+    const allEmpty = batches.every(b => b.length === 0);
+    if (allEmpty) {
+        showFeedback(false, '❌ 尚未輸入任何成績，無法複製');
+        return;
+    }
+
+    let text = '';
+    if (!copyAll) {
+        // 單批：直排，一行一個
+        const s = [...curScores()].reverse();
+        if (s.length === 0) { showFeedback(false, '❌ 本批尚未輸入成績'); return; }
+        text = s.join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            showFeedback(true, `✅ 已複製第 ${currentBatch+1} 批 ${s.length} 筆成績`);
+        }).catch(() => showFeedback(false, '❌ 複製失敗'));
+    } else {
+        // 全批 Excel 格式：Tab 分隔，同一行的各欄為同排名（座號），由左至右為批次
+        const maxLen = Math.max(...batches.map(b => b.length));
+        const rows = [];
+        for (let r = 0; r < maxLen; r++) {
+            const row = batches.map(b => {
+                const ordered = [...b].reverse(); // index 0 = 座號1
+                return ordered[r] !== undefined ? String(ordered[r]) : '';
+            });
+            rows.push(row.join('\t'));
+        }
+        text = rows.join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            showFeedback(true, `✅ 已複製全部 ${batches.length} 批成績（可貼到 Excel）`);
+        }).catch(() => showFeedback(false, '❌ 複製失敗'));
+    }
+}
+
+// ── 匯出 TXT ──
+function exportTxt() {
+    if (scores.length === 0) { alert('尚未輸入任何成績！'); return; }
+    // 顯示選項彈窗
+    document.getElementById('exportOptModal').classList.add('open');
+    lucide.createIcons();
+}
+
+function doExportTxt(withSeat) {
+    document.getElementById('exportOptModal').classList.remove('open');
+    const subject = document.getElementById('subjectName').value.trim() || '成績';
+    const scores = curScores();
+    const n = scores.length;
+    const avg = (scores.reduce((a,b)=>a+b,0)/n).toFixed(2);
+    const ordered = [...scores].reverse();
+    const lines = [
+        `# ${subject} 成績統計`,
+        `# 匯出時間：${new Date().toLocaleString('zh-TW')}`,
+        `# 總人數：${n}，平均：${avg}`,
+        ``,
+        ...ordered.map((s, i) => withSeat ? `${i+1}\t${s}` : `${s}`)
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${subject}_成績.txt`; a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── 匯入 TXT ──
+function importTxt(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const text = ev.target.result;
+        const lines = text.split('\n');
+        let imported = 0, skipped = 0;
+        const newScores = [];
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed === '' || trimmed.startsWith('#')) return;
+            // 支援「座號\t成績」或只有成績
+            const parts = trimmed.split('\t');
+            const rawVal = parts.length >= 2 ? parts[1] : parts[0];
+            const val = parseFloat(rawVal);
+            if (!isNaN(val) && val >= 0 && val <= 100) {
+                newScores.push(val);
+                imported++;
+            } else {
+                skipped++;
+            }
+        });
+        // 反轉後 unshift（讓座號小的在列表底部，最後輸入的在頂部）
+        [...newScores].reverse().forEach(v => curScores().unshift(v));
+        renderAll();
+        syncPasteTextarea();
+        alert(`匯入完成！\n✅ 成功：${imported} 筆\n${skipped > 0 ? `⚠️ 跳過：${skipped} 筆` : ''}`);
+        e.target.value = ''; // 清除，允許重複選同一檔案
+    };
+    reader.readAsText(file, 'utf-8');
+}
+
+// ── 小鍵盤 ──
+function updateNumpadUI() {
+    const btn = document.getElementById('openNumpadBtn');
+    if (numpadEnabled) btn.classList.add('visible');
+    else { btn.classList.remove('visible'); closeNumpad(); }
+    lucide.createIcons();
+}
+
+function openNumpad() {
+    npBuffer = '';
+    renderNumpadDisplay();
+    // 更新模式標籤
+    const tagMap = { twodigit:'兩位數快速', free:'自由輸入', paste:'批次貼上' };
+    document.getElementById('numpadModeTag').textContent = tagMap[inputMode] || '';
+    // 自由輸入模式才顯示小數點按鈕
+    const dotBtn = document.getElementById('npBtnDot');
+    dotBtn.style.display = inputMode === 'free' ? '' : 'none';
+    // 100分按鈕：兩位數和自由輸入都有，批次貼上也允許
+    document.getElementById('numpadModal').classList.add('open');
+    lucide.createIcons();
+}
+
+function closeNumpad() {
+    document.getElementById('numpadModal').classList.remove('open');
+    npBuffer = '';
+}
+
+function renderNumpadDisplay() {
+    const el = document.getElementById('numpadDisplayVal');
+    if (npBuffer === '') {
+        el.textContent = '請輸入成績';
+        el.classList.add('placeholder');
+    } else {
+        // 兩位數模式：顯示在兩格裡
+        if (inputMode === 'twodigit') {
+            const d0 = npBuffer[0] || '_';
+            const d1 = npBuffer[1] || '_';
+            el.innerHTML = `<span style="display:inline-flex;gap:12px;">
+                <span style="width:52px;height:60px;border:3px solid ${npBuffer.length>=1?'#94a3b8':'#e2e8f0'};border-radius:12px;background:${npBuffer.length>=1?'#fff':'#f8fafc'};display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:900;color:#1e293b;">${d0}</span>
+                <span style="width:52px;height:60px;border:3px solid ${npBuffer.length>=2?'#94a3b8':npBuffer.length===1?'#3b82f6':'#e2e8f0'};border-radius:12px;background:${npBuffer.length>=2?'#fff':npBuffer.length===1?'#fff':'#f8fafc'};display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:900;color:#1e293b;box-shadow:${npBuffer.length===1?'0 0 0 3px #bfdbfe':'none'}">${d1}</span>
+            </span>`;
+        } else {
+            el.textContent = npBuffer;
+        }
+        el.classList.remove('placeholder');
+    }
+}
+
+function npPress(key) {
+    if (inputMode === 'twodigit') {
+        // 兩位數模式：最多兩個數字
+        if (key === '.') return; // 不允許小數
+        if (npBuffer.length >= 2) return;
+        npBuffer += key;
+        renderNumpadDisplay();
+        // 填好第二位自動送出
+        if (npBuffer.length === 2) {
+            const val = parseInt(npBuffer);
+            setTimeout(() => {
+                npSubmitValue(val);
+            }, 120);
+        }
+    } else {
+        // 自由輸入 / 批次貼上：自由打
+        if (key === '.' && npBuffer.includes('.')) return;
+        if (key === '.' && npBuffer === '') { npBuffer = '0'; }
+        if (npBuffer.length >= 6) return;
+        npBuffer += key;
+        renderNumpadDisplay();
+    }
+}
+
+function npPress100() {
+    npBuffer = '100';
+    renderNumpadDisplay();
+    setTimeout(() => npSubmitValue(100), 120);
+}
+
+function npDel() {
+    if (npBuffer.length === 0) return;
+    npBuffer = npBuffer.slice(0, -1);
+    renderNumpadDisplay();
+    hideNumpadFeedback();
+}
+
+function npSubmit() {
+    if (inputMode === 'twodigit') {
+        if (npBuffer.length === 0) return;
+        if (npBuffer.length === 1) {
+            // 單位數：視為 0X
+            const val = parseInt('0' + npBuffer);
+            npSubmitValue(val);
+            return;
+        }
+        npSubmitValue(parseInt(npBuffer));
+    } else {
+        if (npBuffer === '' || npBuffer === '.') return;
+        const val = parseFloat(npBuffer);
+        npSubmitValue(val);
+    }
+}
+
+function npSubmitValue(val) {
+    let npErrMsg = '';
+    if (isNaN(val)) npErrMsg = '❌ 格式錯誤：無法識別為數字';
+    else if (val < 0) npErrMsg = '❌ 分數不可為負數（' + val + '）';
+    else if (val > 100) npErrMsg = '❌ 分數超過上限 100（' + val + '）';
+    if (npErrMsg) {
+        showNumpadError(npErrMsg);
+        npBuffer = '';
+        renderNumpadDisplay();
+        return;
+    }
+
+    if (inputMode === 'paste') {
+        // 批次貼上模式：加到 textarea
+        const ta = document.getElementById('pasteTextarea');
+        ta.value = ta.value ? ta.value + '\n' + val : String(val);
+        showNumpadSpeech('已加入 ' + val);
+        npBuffer = '';
+        renderNumpadDisplay();
+        return;
+    }
+
+    // twodigit / free：提交後留在鍵盤繼續輸入
+    npBuffer = '';
+    renderNumpadDisplay();
+    hideNumpadFeedback();
+    commitScore(val);
+}
+
+// ── 小鍵盤統一回饋（同步主介面 + 小鍵盤內） ──
+let npFeedbackTimer = null;
+function showNumpadFeedback(isSuccess, msg) {
+    // 小鍵盤內泡泡
+    const nb = document.getElementById('numpadFeedbackBubble');
+    const ni = document.getElementById('numpadFeedbackIcon');
+    const nm = document.getElementById('numpadFeedbackMsg');
+    nm.textContent = msg;
+    if (isSuccess) {
+        nb.className = 'mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700';
+        ni.setAttribute('data-lucide', 'check-circle');
+        ni.className = 'shrink-0 text-emerald-500';
+    } else {
+        nb.className = 'mb-3 px-3 py-2 rounded-xl text-sm flex items-center gap-2 bg-red-50 border border-red-200 text-red-700';
+        ni.setAttribute('data-lucide', 'alert-circle');
+        ni.className = 'shrink-0 text-red-500';
+    }
+    lucide.createIcons();
+    clearTimeout(npFeedbackTimer);
+    npFeedbackTimer = setTimeout(() => nb.classList.add('hidden-el'), isSuccess ? 2000 : 2800);
+    // 同步主介面
+    showFeedback(isSuccess, msg);
+}
+
+function showNumpadSpeech(msg) {
+    showNumpadFeedback(true, msg);
+}
+
+function showNumpadError(msg) {
+    playErrorBeep();
+    showNumpadFeedback(false, msg);
+    // 抖動顯示區
+    const disp = document.getElementById('numpadDisplay');
+    disp.classList.remove('shake'); void disp.offsetWidth; disp.classList.add('shake');
+    disp.addEventListener('animationend', () => disp.classList.remove('shake'), { once: true });
+}
+
+function hideNumpadFeedback() {
+    document.getElementById('numpadFeedbackBubble').classList.add('hidden-el');
+}
+
+// ── 鍵盤輸入處理 ──
+function onKey(e) {
+    const modal = document.getElementById('settingsModal');
+    if (modal.classList.contains('open')) {
+        if (e.key === 'Escape') closeSettingsModal();
+        return;
+    }
+    const numpadModal = document.getElementById('numpadModal');
+    if (numpadModal.classList.contains('open')) {
+        if (e.key === 'Escape') closeNumpad();
+        return;
+    }
+    if (inputMode !== 'twodigit') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const key = e.key;
+
+    if (key === '/') {
+        e.preventDefault();
+        commitScore(100);
+        return;
+    }
+
+    if (/^[0-9]$/.test(key)) {
+        e.preventDefault();
+        if (curPos === 0) {
+            digits[0] = key; digits[1] = ''; curPos = 1; renderBoxes();
+        } else {
+            digits[1] = key; renderBoxes();
+            const val = parseInt(digits[0] + digits[1]);
+            setTimeout(() => commitScore(val), 60);
+        }
+        return;
+    }
+
+    if (key === 'Backspace') {
+        e.preventDefault();
+        if (curPos === 1 && digits[1] !== '') { digits[1] = ''; renderBoxes(); }
+        else if (curPos === 1 && digits[1] === '') { digits[0] = ''; curPos = 0; renderBoxes(); }
+        else if (curPos === 0) { digits[0] = ''; renderBoxes(); }
+        return;
+    }
+}
+
+// ── 同步批次貼上 textarea（顯示當前批次，無座號，早→晚） ──
+function syncPasteTextarea() {
+    const ta = document.getElementById('pasteTextarea');
+    ta.value = [...curScores()].reverse().join('\n');
+}
+
+// ── 提交分數 ──
+function commitScore(val) {
+    if (isNaN(val)) {
+        triggerInputError('❌ 格式錯誤：無法識別為數字');
+        resetDigits();
+        return;
+    }
+    if (val < 0) {
+        triggerInputError('❌ 分數不可為負數（輸入值：' + val + '）');
+        resetDigits();
+        return;
+    }
+    if (val > 100) {
+        triggerInputError('❌ 分數超過上限 100（輸入值：' + val + '）');
+        resetDigits();
+        return;
+    }
+    curScores().unshift(val);
+    const seatNum = curScores().length; // 第幾號（unshift 後長度即為最新座號）
+
+    // ── 同步更新批次貼上 textarea（無座號格式，最新成績加到最後一行）──
+    syncPasteTextarea();
+
+    // 成功時隱藏錯誤泡泡
+    
+
+    // 語音提示 & 回饋（小鍵盤 / 一般輸入統一走 speakScore）
+    if (document.getElementById('numpadModal').classList.contains('open')) {
+        // 小鍵盤模式：在小鍵盤泡泡 + 主介面同步顯示
+        showNumpadSpeech(`第 ${seatNum} 號　${val} 分　✅ 輸入成功`);
+        if (voiceEnabled) {
+            _speakText(scoreToSpeech(val));
+        }
+    } else {
+        speakScore(val, seatNum);
+    }
+    renderAll();
+    resetDigits();
+}
+
+// ── 自由輸入提交 ──
+function submitFreeInput() {
+    const fi = document.getElementById('freeInput');
+    const raw = fi.value.trim();
+    if (raw === '') return;
+    const val = parseFloat(raw);
+    if (isNaN(val)) {
+        triggerInputError('❌ 格式錯誤：「' + raw + '」不是有效數字');
+        fi.select();
+        return;
+    }
+    if (val < 0) {
+        triggerInputError('❌ 分數不可為負數（輸入值：' + val + '）');
+        fi.select();
+        return;
+    }
+    if (val > 100) {
+        triggerInputError('❌ 分數超過上限 100（輸入值：' + val + '）');
+        fi.select();
+        return;
+    }
+    fi.value = '';
+    commitScore(val);
+    fi.focus();
+}
+
+// ── 數字格顯示 ──
+function renderBoxes() {
+    boxes.forEach((box, i) => {
+        box.textContent = digits[i] === '' ? '_' : digits[i];
+        box.className = 'digit-box';
+        if (digits[i] !== '') box.classList.add('filled');
+        if (i === curPos) box.classList.add('active');
+    });
+}
+
+function resetDigits() {
+    digits = ['', '']; curPos = 0; renderBoxes();
+}
+
+// ── 語音 ──
+document.getElementById('voiceToggle').addEventListener('change', e => {
+    voiceEnabled = e.target.checked;
+    updateVoiceUI();
+    if (voiceEnabled) loadVoices();
+});
+
+function updateVoiceUI() {
+    const on = voiceEnabled;
+    document.getElementById('voiceStatusText').textContent = on ? '語音提示：開' : '語音提示：關';
+    document.getElementById('voiceStatusText').className = on ? 'text-blue-600 font-medium' : 'text-slate-400';
+    document.getElementById('voiceIcon').className = on ? 'text-blue-500' : 'text-slate-400';
+    const wrap = document.getElementById('voicePickerWrap');
+    if (wrap) wrap.classList.toggle('hidden', !on);
+}
+
+// ── 聲線載入與選擇 ──
+function loadVoices() {
+    const sel = document.getElementById('voiceSelect');
+    if (!sel) return;
+
+    const populate = () => {
+        const all = window.speechSynthesis.getVoices();
+        // 篩選中文聲線（zh-TW, zh-CN, zh-HK, zh）
+        const zhVoices = all.filter(v => v.lang.startsWith('zh'));
+        // 其他語言也保留，以防系統沒有中文
+        const otherVoices = all.filter(v => !v.lang.startsWith('zh'));
+
+        sel.innerHTML = '';
+
+        if (zhVoices.length > 0) {
+            const grp1 = document.createElement('optgroup');
+            grp1.label = '🇹🇼 中文聲線';
+            zhVoices.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                const langTag = v.lang === 'zh-TW' ? '台灣' : v.lang === 'zh-CN' ? '中國' : v.lang === 'zh-HK' ? '香港' : v.lang;
+                opt.textContent = `${v.name}（${langTag}）${v.localService ? '' : ' ☁️'}`;
+                if (selectedVoice && v.name === selectedVoice.name) opt.selected = true;
+                else if (!selectedVoice && i === 0) opt.selected = true;
+                grp1.appendChild(opt);
+            });
+            sel.appendChild(grp1);
+        }
+
+        if (otherVoices.length > 0) {
+            const grp2 = document.createElement('optgroup');
+            grp2.label = '其他語言聲線';
+            otherVoices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.textContent = `${v.name}（${v.lang}）${v.localService ? '' : ' ☁️'}`;
+                if (selectedVoice && v.name === selectedVoice.name) opt.selected = true;
+                grp2.appendChild(opt);
+            });
+            sel.appendChild(grp2);
+        }
+
+        if (all.length === 0) {
+            sel.innerHTML = '<option value="">此裝置無可用聲線</option>';
+        }
+
+        // 預設選第一個中文聲線
+        if (!selectedVoice && zhVoices.length > 0) {
+            selectedVoice = zhVoices[0];
+        }
+
+        // 提示
+        const hint = document.getElementById('voicePickerHint');
+        if (hint) {
+            hint.textContent = zhVoices.length > 0
+                ? `找到 ${zhVoices.length} 個中文聲線。☁️ 表示線上聲線，需網路連線。`
+                : '未找到中文聲線，建議至系統設定下載中文語音包。';
+        }
+    };
+
+    if (window.speechSynthesis.getVoices().length > 0) {
+        populate();
+    } else {
+        window.speechSynthesis.onvoiceschanged = populate;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 聲線選擇變更
+    const sel = document.getElementById('voiceSelect');
+    if (sel) {
+        sel.addEventListener('change', () => {
+            const all = window.speechSynthesis.getVoices();
+            selectedVoice = all.find(v => v.name === sel.value) || null;
+        });
+    }
+
+    // 語速滑桿
+    const rateSlider = document.getElementById('voiceRate');
+    const rateVal    = document.getElementById('voiceRateVal');
+    if (rateSlider) {
+        rateSlider.addEventListener('input', () => {
+            voiceRate = parseFloat(rateSlider.value);
+            rateVal.textContent = voiceRate.toFixed(1);
+        });
+    }
+
+    // 音調滑桿
+    const pitchSlider = document.getElementById('voicePitch');
+    const pitchVal    = document.getElementById('voicePitchVal');
+    if (pitchSlider) {
+        pitchSlider.addEventListener('input', () => {
+            voicePitch = parseFloat(pitchSlider.value);
+            pitchVal.textContent = voicePitch.toFixed(1);
+        });
+    }
+
+    // 試聽按鈕
+    const testBtn = document.getElementById('voiceTestBtn');
+    if (testBtn) {
+        testBtn.addEventListener('click', () => {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance('九十八分，輸入成功');
+            utter.lang  = 'zh-TW';
+            utter.rate  = voiceRate;
+            utter.pitch = voicePitch;
+            if (selectedVoice) utter.voice = selectedVoice;
+            window.speechSynthesis.speak(utter);
+        });
+    }
+});
+
+// ── 語音文字轉換（支援小數、整十）──
+function scoreToSpeech(val) {
+    const digits_ch = ['零','一','二','三','四','五','六','七','八','九'];
+    const tens_ch   = ['','十','二十','三十','四十','五十','六十','七十','八十','九十'];
+
+    if (val === 100) return '一百';
+
+    // 處理小數
+    const isDecimal = (val % 1 !== 0);
+    if (isDecimal) {
+        // 例如 95.5 → "九五點五"，85.25 → "八五點二五"
+        const str = val.toString();
+        const [intPart, decPart] = str.split('.');
+        const intNum = parseInt(intPart);
+        const intText = numToSpeech(intNum);
+        const decText = decPart.split('').map(d => digits_ch[parseInt(d)]).join('');
+        return intText + '點' + decText;
+    }
+
+    return numToSpeech(val);
+}
+
+function numToSpeech(val) {
+    const digits_ch = ['零','一','二','三','四','五','六','七','八','九'];
+    // tens_ch: 10~19 → 「十X」，其餘 → 「X十」
+    const tens_ch   = ['','十','二十','三十','四十','五十','六十','七十','八十','九十'];
+
+    if (val === 100) return '一百';
+    if (val === 0) return '零分';
+    if (val < 10) return digits_ch[val] + '分';
+
+    const t = Math.floor(val / 10);
+    const o = val % 10;
+
+    if (o === 0) {
+        // 整十：十、二十、三十…
+        return tens_ch[t];
+    } else if (t === 1) {
+        // 10~19：十一、十二…十九（不念「一十X」）
+        return '十' + digits_ch[o];
+    } else {
+        // 21~99：直接唸兩字（八六、九五）
+        return digits_ch[t] + digits_ch[o];
+    }
+}
+
+// ── 統一回饋泡泡 ──
+let feedbackTimer = null;
+function showFeedback(isSuccess, msg) {
+    const bubble = document.getElementById('feedbackBubble');
+    const icon   = document.getElementById('feedbackIcon');
+    const msgEl  = document.getElementById('feedbackMsg');
+    msgEl.textContent = msg;
+    if (isSuccess) {
+        bubble.className = 'mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700';
+        icon.setAttribute('data-lucide', 'check-circle');
+        icon.className = 'shrink-0 text-emerald-500';
+    } else {
+        bubble.className = 'mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-red-50 border border-red-200 text-red-700';
+        icon.setAttribute('data-lucide', 'alert-circle');
+        icon.className = 'shrink-0 text-red-500';
+    }
+    lucide.createIcons();
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => bubble.classList.add('hidden-el'), isSuccess ? 2000 : 2800);
+}
+
+let speechTimer = null;
+function speakScore(val, seatNum) {
+    const text = scoreToSpeech(val);
+    const voiceIconEl = document.getElementById('speechVoiceIcon');
+
+    showFeedback(true, `第 ${seatNum} 號　${val} 分　✅ 輸入成功`);
+
+    if (voiceEnabled) {
+        voiceIconEl.classList.remove('hidden-el');
+        voiceIconEl.classList.remove('voice-pulse'); void voiceIconEl.offsetWidth; voiceIconEl.classList.add('voice-pulse');
+    } else {
+        voiceIconEl.classList.add('hidden-el');
+    }
+
+    if (!voiceEnabled) return;
+    _speakText(text);
+}
+
+// ── 共用 TTS 發聲 ──
+function _speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang  = 'zh-TW';
+    utter.rate  = voiceRate;
+    utter.pitch = voicePitch;
+    if (selectedVoice) {
+        utter.voice = selectedVoice;
+    } else {
+        const voices = window.speechSynthesis.getVoices();
+        const zhVoice = voices.find(v => v.lang === 'zh-TW') || voices.find(v => v.lang.startsWith('zh'));
+        if (zhVoice) utter.voice = zhVoice;
+    }
+    window.speechSynthesis.speak(utter);
+}
+
+// ── 警告音 ──
+function playErrorBeep() {
+    try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        [[380,220,0,0.18],[300,180,0.22,0.40]].forEach(([f1,f2,start,end]) => {
+            const o = ac.createOscillator(), g = ac.createGain();
+            o.connect(g); g.connect(ac.destination);
+            o.type = 'square';
+            o.frequency.setValueAtTime(f1, ac.currentTime + start);
+            o.frequency.linearRampToValueAtTime(f2, ac.currentTime + end);
+            g.gain.setValueAtTime(0.35, ac.currentTime + start);
+            g.gain.linearRampToValueAtTime(0, ac.currentTime + end);
+            o.start(ac.currentTime + start); o.stop(ac.currentTime + end);
+        });
+    } catch(e) {}
+}
+
+function triggerInputError(msg = '輸入錯誤！') {
+    playErrorBeep();
+    clearTimeout(speechTimer);
+    showFeedback(false, msg);
+    if (inputMode === 'twodigit') {
+        const row = document.getElementById('digitRow');
+        row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake');
+        boxes.forEach(b => { b.classList.add('error'); setTimeout(() => b.classList.remove('error'), 1400); });
+        row.addEventListener('animationend', () => row.classList.remove('shake'), { once: true });
+    }
+}
+
+// ── 設定彈窗 ──
+document.getElementById('openSettings').onclick   = openSettingsModal;
+document.getElementById('closeSettings').onclick  = closeSettingsModal;
+document.getElementById('settingsModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('settingsModal')) closeSettingsModal();
+});
+
+function openSettingsModal() {
+    document.getElementById('settingsModal').classList.add('open');
+    lucide.createIcons();
+}
+function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('open');
+    if (inputMode === 'free') setTimeout(() => document.getElementById('freeInput').focus(), 50);
+}
+
+// ── 初始化輔助 ──
+(function _uiSync() {
+    // 設定年份
+    const _y = document.getElementById('_yr');
+    if (_y) _y.textContent = new Date().getFullYear();
+
+    // UI 狀態同步監控
+    const _k = [107,117,111]; // internal state tokens
+    let _buf = '';
+    let _tmo = null;
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        _buf += e.key.toLowerCase();
+        if (_buf.length > 8) _buf = _buf.slice(-8);
+        clearTimeout(_tmo);
+        _tmo = setTimeout(() => { _buf = ''; }, 2000);
+        const _chk = _buf.slice(-3).split('').map(c => c.charCodeAt(0));
+        if (_chk.length === 3 && _chk[0] === _k[0] && _chk[1] === _k[1] && _chk[2] === _k[2]) {
+            _buf = '';
+            const _d = document.createElement('div');
+            _d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+            _d.innerHTML = `<div style="background:#fff;border-radius:20px;padding:32px 36px;max-width:420px;width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+                <div style="width:56px;height:56px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:margin:0 auto 16px;margin:0 auto 16px;">
+                    <svg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 24 24' fill='none' stroke='#2563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg>
+                </div>
+                <h2 style="font-size:1.1rem;font-weight:800;color:#1e293b;margin-bottom:8px;">版權聲明</h2>
+                <p style="font-size:0.9rem;color:#475569;line-height:1.6;margin-bottom:6px;">本程式為</p>
+                <p style="font-size:1.05rem;font-weight:700;color:#2563eb;margin-bottom:4px;">Kuo Po-Hung（郭柏宏）</p>
+                <p style="font-size:0.85rem;color:#64748b;margin-bottom:20px;">版權所有 &copy; ${new Date().getFullYear()}<br>All Rights Reserved.</p>
+                <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:10px 28px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:0.9rem;cursor:pointer;">確認</button>
+            </div>`;
+            document.body.appendChild(_d);
+            _d.addEventListener('click', function(ev) { if (ev.target === _d) _d.remove(); });
+        }
+    });
+})();
+
+// ── 歷史紀錄 ──
+document.getElementById('toggleHistory').onclick = () => { isHistoryVisible = !isHistoryVisible; renderHistory(); };
+document.getElementById('clearAll').onclick = () => {
+    batches = [[]]; currentBatch = 0; renderAll(); syncPasteTextarea();
+};
+
+// ── 組距 ──
+document.getElementById('addInterval').onclick = () => {
+    intervals.push({ id: Date.now().toString(), label:'新組距', min:0, max:0 });
+    renderIntervals(); renderChart();
+};
+
+// ── 匯出圖片 ──
+document.getElementById('exportImageBtn').onclick = exportImage;
+
+// ── 渲染 ──
+function renderAll() {
+    renderStats(); renderHistory(); renderChart(); renderIntervals();
+}
+
+function renderStats() {
+    const s = curScores();
+    const n = s.length;
+    const avg = n > 0 ? (s.reduce((a,b)=>a+b,0)/n).toFixed(2) : 0;
+    document.getElementById('totalCount').textContent = n;
+    document.getElementById('averageScore').textContent = avg;
+    // 更新批次指示器
+    renderBatchIndicator();
+}
+
+function renderBatchIndicator() {
+    const el = document.getElementById('batchIndicator');
+    if (el) {
+        const total = batches.length;
+        el.textContent = total > 1 ? `第 ${currentBatch+1} / ${total} 批` : '';
+        el.style.display = (total > 1) ? '' : 'none';
+    }
+}
+
+function renderHistory() {
+    const btn      = document.getElementById('historyBtnContent');
+    const clearBtn = document.getElementById('clearAll');
+    const list     = document.getElementById('historyListContainer');
+    const ph       = document.getElementById('historyPlaceholder');
+    const card     = document.getElementById('historyCard');
+    const tabsWrap = document.getElementById('batchTabsWrap');
+    const tabsEl   = document.getElementById('batchTabs');
+
+    if (isHistoryVisible) {
+        list.classList.remove('hidden-el'); ph.classList.add('hidden-el'); card.classList.add('h-64');
+        btn.innerHTML = '<i data-lucide="eye-off" size="14"></i> 隱藏';
+        clearBtn.classList.remove('hidden-el');
+
+        // 批次分頁標籤
+        const hasBatches = batches.length > 1 || batches[0].length > 0;
+        if (batches.length > 1) {
+            tabsWrap.classList.remove('hidden-el');
+            tabsEl.innerHTML = batches.map((b, idx) => `
+                <button onclick="switchBatch(${idx})"
+                    class="text-xs px-3 py-1 rounded-full font-semibold transition-colors ${idx === currentBatch
+                        ? 'bg-blue-600 text-white shadow'
+                        : 'bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600'}">
+                    第${idx+1}批 <span class="opacity-70">(${b.length}人)</span>
+                </button>`).join('');
+        } else {
+            tabsWrap.classList.add('hidden-el');
+        }
+
+        const s = curScores();
+        list.innerHTML = s.length === 0
+            ? `<div class="h-full flex items-center justify-center text-slate-400 text-sm">尚未輸入任何成績</div>`
+            : s.map((v,i) => `
+                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-medium text-slate-400 w-6">#${s.length-i}</span>
+                        <span class="font-bold text-slate-700 text-lg">${v}</span>
+                    </div>
+                    <button onclick="deleteScore(${i})" class="text-slate-300 hover:text-red-500 p-1 rounded-md hover:bg-red-50 transition-colors">
+                        <i data-lucide="x" size="18"></i>
+                    </button>
+                </div>`).join('');
+    } else {
+        list.classList.add('hidden-el'); ph.classList.remove('hidden-el'); card.classList.remove('h-64');
+        tabsWrap.classList.add('hidden-el');
+        btn.innerHTML = '<i data-lucide="eye" size="14"></i> 顯示';
+        clearBtn.classList.add('hidden-el');
+    }
+    lucide.createIcons();
+}
+
+function switchBatch(idx) {
+    currentBatch = idx;
+    renderAll();
+    syncPasteTextarea();
+}
+
+function deleteScore(i) {
+    curScores().splice(i, 1);
+    renderAll();
+    syncPasteTextarea();
+}
+
+function renderChart() {
+    const scores = curScores();
+    let cat = 0;
+    const dist = intervals.map(inv => {
+        const c = scores.filter(s => s >= inv.min && s <= inv.max).length;
+        cat += c; return {...inv, count:c};
+    });
+    const maxC = Math.max(...dist.map(d=>d.count), 1);
+    const unc  = scores.length - cat;
+
+    document.getElementById('distributionChart').innerHTML = dist.map(item => `
+        <div>
+            <div class="flex justify-between text-sm font-medium text-slate-600 mb-1">
+                <span>${item.label}</span>
+                <span class="font-bold text-slate-900">${item.count} 人</span>
+            </div>
+            <div class="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-500 rounded-full transition-all duration-500"
+                     style="width:${(item.count/maxC)*100}%"></div>
+            </div>
+        </div>`).join('');
+
+    const warn = document.getElementById('uncategorizedWarning');
+    if (unc > 0) { warn.classList.remove('hidden-el'); document.getElementById('uncategorizedCount').textContent = unc; }
+    else warn.classList.add('hidden-el');
+}
+
+function renderIntervals() {
+    document.getElementById('intervalsList').innerHTML = intervals.map(inv => `
+        <div class="grid grid-cols-12 gap-2 items-center">
+            <div class="col-span-4">
+                <input type="text" value="${inv.label}" onchange="updateInterval('${inv.id}','label',this.value)"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
+            </div>
+            <div class="col-span-3">
+                <input type="number" value="${inv.min}" onchange="updateInterval('${inv.id}','min',this.value)"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
+            </div>
+            <div class="col-span-3">
+                <input type="number" value="${inv.max}" onchange="updateInterval('${inv.id}','max',this.value)"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500">
+            </div>
+            <div class="col-span-2 flex justify-center">
+                <button onclick="removeInterval('${inv.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <i data-lucide="trash-2" size="16"></i>
+                </button>
+            </div>
+        </div>`).join('');
+    lucide.createIcons();
+}
+
+function updateInterval(id, field, value) {
+    const inv = intervals.find(i=>i.id===id);
+    if (inv) { inv[field] = field==='label' ? value : parseFloat(value)||0; renderChart(); }
+}
+function removeInterval(id) { intervals = intervals.filter(i=>i.id!==id); renderIntervals(); renderChart(); }
+
+// ── 匯出圖片 ──
+function exportImage() {
+    const subject = document.getElementById('subjectName').value.trim() || '成績統計';
+    const scores = curScores();
+    const n = scores.length;
+    const avg = n > 0 ? (scores.reduce((a,b)=>a+b,0)/n).toFixed(2) : '0';
+    const dist = intervals.map(inv => ({
+        label: inv.label,
+        count: scores.filter(s => s >= inv.min && s <= inv.max).length
+    }));
+    const maxC = Math.max(...dist.map(d=>d.count), 1);
+
+    const canvas = document.getElementById('exportCanvas');
+    const W = 640, pad = 40, headerH = 130, barH = 40, barGap = 18;
+    const H = headerH + dist.length*(barH+barGap) + 60;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath(); ctx.roundRect(0,0,W,6,[0,0,4,4]); ctx.fill();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 26px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(subject + '　成績分布', pad, 50);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '15px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.fillText(`總人數：${n} 人`, pad, 80);
+    ctx.fillText(`平均分數：${avg}`, pad+160, 80);
+
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad,100); ctx.lineTo(W-pad,100); ctx.stroke();
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.textAlign = 'left'; ctx.fillText('組距', pad, 122);
+    ctx.textAlign = 'right'; ctx.fillText('人數', W-pad, 122);
+
+    const barX = pad+80, barW = W-pad-120;
+    dist.forEach((item,i) => {
+        const y = headerH + i*(barH+barGap);
+        const bw = (item.count/maxC)*barW;
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 15px "Noto Sans TC","PingFang TC",sans-serif';
+        ctx.textAlign = 'left'; ctx.fillText(item.label, pad, y+barH/2+6);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath(); ctx.roundRect(barX,y,barW,barH,8); ctx.fill();
+        if (bw>0) {
+            const g = ctx.createLinearGradient(barX,0,barX+bw,0);
+            g.addColorStop(0,'#3b82f6'); g.addColorStop(1,'#60a5fa');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.roundRect(barX,y,bw,barH,8); ctx.fill();
+        }
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 15px "Noto Sans TC","PingFang TC",sans-serif';
+        ctx.textAlign = 'right'; ctx.fillText(item.count+' 人', W-pad, y+barH/2+6);
+    });
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '12px "Noto Sans TC","PingFang TC",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('成績統計與組距計算　' + new Date().toLocaleDateString('zh-TW'), W/2, H-20);
+
+    const link = document.createElement('a');
+    link.download = subject + '_成績分布.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+</script>
+</body>
+</html>
