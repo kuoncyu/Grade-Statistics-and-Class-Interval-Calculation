@@ -216,6 +216,47 @@
             backdrop-filter: blur(2px);
         }
         #exportOptModal.open { display: flex; }
+
+        /* ── 深色模式 ── */
+        body.dark-mode { background:#0f172a; color:#e2e8f0; }
+        body.dark-mode .bg-white { background:#1e293b !important; }
+        body.dark-mode .bg-slate-50 { background:#0f172a !important; }
+        body.dark-mode .bg-slate-100 { background:#1e293b !important; }
+        body.dark-mode .border-slate-100 { border-color:#334155 !important; }
+        body.dark-mode .border-slate-200 { border-color:#334155 !important; }
+        body.dark-mode .text-slate-800 { color:#e2e8f0 !important; }
+        body.dark-mode .text-slate-700 { color:#cbd5e1 !important; }
+        body.dark-mode .text-slate-600 { color:#94a3b8 !important; }
+        body.dark-mode .text-slate-500 { color:#64748b !important; }
+        body.dark-mode .text-slate-900 { color:#f1f5f9 !important; }
+        body.dark-mode .shadow-sm { box-shadow:0 1px 3px rgba(0,0,0,0.5) !important; }
+        body.dark-mode .digit-box { background:#1e293b; border-color:#334155; color:#f1f5f9; }
+        body.dark-mode .digit-box.active { background:#1e293b; border-color:#3b82f6; }
+        body.dark-mode .digit-box.filled { background:#1e293b; }
+        body.dark-mode #numpadPanel { background:#1e293b; }
+        body.dark-mode .np-btn-num { background:#334155; color:#f1f5f9; }
+        body.dark-mode .np-btn-num:hover { background:#475569; }
+        body.dark-mode .np-btn-dot { background:#334155; color:#94a3b8; }
+        body.dark-mode .modal-box { background:#1e293b; }
+        body.dark-mode .bg-blue-50 { background:#1e3a5f !important; }
+        body.dark-mode .bg-emerald-50 { background:#064e3b !important; }
+        body.dark-mode .bg-slate-50.rounded-xl { background:#0f172a !important; }
+        body.dark-mode input, body.dark-mode textarea, body.dark-mode select {
+            background:#0f172a !important; color:#e2e8f0 !important; border-color:#334155 !important;
+        }
+        body.dark-mode #freeInput { background:#0f172a !important; color:#f1f5f9 !important; }
+        body.dark-mode .bg-slate-50[readonly] { background:#1a2332 !important; }
+        body.dark-mode #numpadDisplay { background:#0f172a; color:#f1f5f9; }
+        body.dark-mode .custom-scrollbar::-webkit-scrollbar-track { background:#1e293b; }
+        body.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background:#475569; }
+        body.dark-mode .text-slate-400 { color:#64748b !important; }
+
+        /* 方向按鈕 */
+        .dir-btn { background:#fff; border-color:#c4b5fd; color:#7c3aed; }
+        .dir-btn:hover { background:#f5f3ff; }
+        .dir-btn.active-dir { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+        /* 主題按鈕 */
+        .active-theme { box-shadow:0 0 0 3px #3b82f6; }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
@@ -249,9 +290,13 @@
                 <i data-lucide="skip-forward" size="16"></i>
                 <span class="hidden sm:inline">換下一批</span>
             </button>
-            <button id="copyAllBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 shadow-sm transition-colors text-sm">
+            <button id="copyCurrentBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 shadow-sm transition-colors text-sm">
                 <i data-lucide="copy" size="16"></i>
-                <span class="hidden sm:inline">複製成績</span>
+                <span class="hidden sm:inline">複製本批</span>
+            </button>
+            <button id="copyAllBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 shadow-sm transition-colors text-sm">
+                <i data-lucide="layers" size="16"></i>
+                <span class="hidden sm:inline">複製全部</span>
             </button>
             <button id="exportImageBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-sm transition-colors text-sm">
                 <i data-lucide="image" size="16"></i>
@@ -331,9 +376,13 @@
                             class="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition-colors flex items-center justify-center gap-2 text-sm">
                             <i data-lucide="layers" size="16"></i> 複製全批
                         </button>
-                        <button id="pasteClearBtn"
-                            class="py-2.5 px-4 bg-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-500 font-semibold rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-2 text-sm">
-                            <i data-lucide="trash-2" size="16"></i>
+                        <button id="pasteClearCurrentBtn"
+                            class="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 font-semibold rounded-xl border border-red-200 transition-colors flex items-center justify-center gap-1 text-xs">
+                            <i data-lucide="trash-2" size="14"></i>清除本批
+                        </button>
+                        <button id="pasteClearAllBtn"
+                            class="py-2.5 px-3 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 font-semibold rounded-xl border border-slate-200 hover:border-red-200 transition-colors flex items-center justify-center gap-1 text-xs">
+                            <i data-lucide="trash" size="14"></i>清除全部
                         </button>
                     </div>
                     <div id="pasteResultMsg" class="hidden-el text-sm px-3 py-2 rounded-lg"></div>
@@ -490,6 +539,52 @@
             </div>
         </div>
 
+        <!-- 輸入方向 -->
+        <div class="mb-5 p-4 bg-violet-50 rounded-xl border border-violet-100">
+            <div class="flex items-center gap-3 mb-3">
+                <i data-lucide="table-2" class="text-violet-500" size="20"></i>
+                <div>
+                    <p class="text-sm font-semibold text-slate-700">成績輸入方向</p>
+                    <p class="text-xs text-slate-500 mt-0.5">影響「複製全部」貼到 Excel 的排列方式</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="dirColBtn"
+                    class="flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-all flex items-center justify-center gap-2 dir-btn active-dir"
+                    onclick="setScoreDir('col')">
+                    <i data-lucide="arrow-down" size="14"></i> 行輸入（直排↓）
+                </button>
+                <button id="dirRowBtn"
+                    class="flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-all flex items-center justify-center gap-2 dir-btn"
+                    onclick="setScoreDir('row')">
+                    <i data-lucide="arrow-right" size="14"></i> 列輸入（橫排→）
+                </button>
+            </div>
+        </div>
+
+        <!-- 背景顏色 -->
+        <div class="mb-5 p-4 bg-slate-100 rounded-xl border border-slate-200">
+            <div class="flex items-center gap-3 mb-3">
+                <i data-lucide="palette" class="text-slate-600" size="20"></i>
+                <div>
+                    <p class="text-sm font-semibold text-slate-700">背景顏色</p>
+                    <p class="text-xs text-slate-500 mt-0.5">切換介面主題</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="themeLight"
+                    class="flex-1 py-2 rounded-lg text-sm font-semibold border-2 border-slate-300 bg-white text-slate-700 hover:border-blue-400 transition-all flex items-center justify-center gap-2 theme-btn active-theme"
+                    onclick="setTheme('light')">
+                    <i data-lucide="sun" size="14"></i> 白色背景
+                </button>
+                <button id="themeDark"
+                    class="flex-1 py-2 rounded-lg text-sm font-semibold border-2 border-slate-600 bg-slate-800 text-slate-200 hover:border-blue-400 transition-all flex items-center justify-center gap-2 theme-btn"
+                    onclick="setTheme('dark')">
+                    <i data-lucide="moon" size="14"></i> 黑色背景
+                </button>
+            </div>
+        </div>
+
         <!-- 科目名稱 -->
         <div class="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
             <label class="text-xs font-semibold text-slate-600 block mb-1.5 flex items-center gap-2">
@@ -643,6 +738,8 @@ let voiceRate  = 1.0;
 let voicePitch = 1.0;
 let numpadEnabled = false;
 let inputMode = 'twodigit'; // 'twodigit' | 'free' | 'paste'
+let scoreDir = 'col'; // 'col'=直排（每批同欄）'row'=橫排（每批同列）
+let darkMode = false;
 
 // ── 小鍵盤狀態 ──
 let npBuffer = '';
@@ -673,13 +770,18 @@ window.onload = () => {
     // 換下一批
     document.getElementById('nextBatchBtn').onclick = nextBatch;
 
-    // 批次貼上（唯讀同步版）
-    document.getElementById('pasteCopyCurrentBtn').onclick = () => copyScores(false);
-    document.getElementById('pasteCopyAllBtn').onclick    = () => copyScores(true);
-    document.getElementById('pasteClearBtn').onclick = clearCurrentBatch;
+    // Header 複製
+    document.getElementById('copyCurrentBtn').onclick = () => copyScores(false);
+    document.getElementById('copyAllBtn').onclick     = () => copyScores(true);
 
-    // 複製成績（Header 按鈕）
-    document.getElementById('copyAllBtn').onclick = () => copyScores(true);
+    // 批次貼上 - 複製
+    document.getElementById('pasteCopyCurrentBtn').onclick = () => copyScores(false);
+    document.getElementById('pasteCopyAllBtn').onclick     = () => copyScores(true);
+    // 批次貼上 - 清除
+    document.getElementById('pasteClearCurrentBtn').onclick = clearCurrentBatch;
+    document.getElementById('pasteClearAllBtn').onclick     = () => {
+        batches = [[]]; currentBatch = 0; renderAll(); syncPasteTextarea();
+    };
 
     // 匯出 / 匯入 TXT
     document.getElementById('exportTxtBtn').onclick = exportTxt;
@@ -805,6 +907,22 @@ function showPasteMsg(msg, ok) {
     setTimeout(() => el.classList.add('hidden-el'), 4000);
 }
 
+// ── 設定輸入方向 ──
+function setScoreDir(dir) {
+    scoreDir = dir;
+    document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active-dir'));
+    document.getElementById(dir === 'col' ? 'dirColBtn' : 'dirRowBtn').classList.add('active-dir');
+}
+
+// ── 設定主題 ──
+function setTheme(theme) {
+    darkMode = (theme === 'dark');
+    document.body.classList.toggle('dark-mode', darkMode);
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active-theme'));
+    document.getElementById(darkMode ? 'themeDark' : 'themeLight').classList.add('active-theme');
+    lucide.createIcons();
+}
+
 // ── 換下一批 ──
 function nextBatch() {
     // 若當前批次是空的就不新增
@@ -835,37 +953,47 @@ function clearCurrentBatch() {
     syncPasteTextarea();
 }
 
-// ── 複製成績（Excel 格式）──
-// copyAll=false → 只複製當前批次（直排）
-// copyAll=true  → 所有批次橫排（各批一欄，批次由左至右，同批同一欄直排）
+// ── 複製成績（Excel 格式，依 scoreDir）──
+// copyAll=false → 只複製當前批次
+// copyAll=true  → 全部批次（依 scoreDir 排列）
 function copyScores(copyAll) {
     const allEmpty = batches.every(b => b.length === 0);
-    if (allEmpty) {
-        showFeedback(false, '❌ 尚未輸入任何成績，無法複製');
-        return;
-    }
+    if (allEmpty) { showFeedback(false, '❌ 尚未輸入任何成績，無法複製'); return; }
 
-    let text = '';
     if (!copyAll) {
-        // 單批：直排，一行一個
+        // 複製本批：一格一行（直排）或一格一欄（Tab 橫排）
         const s = [...curScores()].reverse();
         if (s.length === 0) { showFeedback(false, '❌ 本批尚未輸入成績'); return; }
-        text = s.join('\n');
+        const text = scoreDir === 'col'
+            ? s.join('\n')        // 直排 → 貼到 Excel 同欄
+            : s.join('\t');       // 橫排 → 貼到 Excel 同列
         navigator.clipboard.writeText(text).then(() => {
             showFeedback(true, `✅ 已複製第 ${currentBatch+1} 批 ${s.length} 筆成績`);
         }).catch(() => showFeedback(false, '❌ 複製失敗'));
     } else {
-        // 全批 Excel 格式：Tab 分隔，同一行的各欄為同排名（座號），由左至右為批次
-        const maxLen = Math.max(...batches.map(b => b.length));
-        const rows = [];
-        for (let r = 0; r < maxLen; r++) {
-            const row = batches.map(b => {
-                const ordered = [...b].reverse(); // index 0 = 座號1
-                return ordered[r] !== undefined ? String(ordered[r]) : '';
-            });
-            rows.push(row.join('\t'));
+        // 複製全部
+        const activeBatches = batches.filter(b => b.length > 0);
+        if (activeBatches.length === 0) { showFeedback(false, '❌ 所有批次皆無成績'); return; }
+
+        let text = '';
+        if (scoreDir === 'col') {
+            // 行輸入（直排）：各批同欄，批次由左→右，同批由上→下
+            // Excel 結果：A欄=第1批, B欄=第2批 …
+            const maxLen = Math.max(...batches.map(b => b.length));
+            const rows = [];
+            for (let r = 0; r < maxLen; r++) {
+                const row = batches.map(b => {
+                    const ordered = [...b].reverse();
+                    return ordered[r] !== undefined ? String(ordered[r]) : '';
+                });
+                rows.push(row.join('\t'));
+            }
+            text = rows.join('\n');
+        } else {
+            // 列輸入（橫排）：各批同列，批次由上→下，同批由左→右
+            // Excel 結果：第1列=第1批, 第2列=第2批 …
+            text = batches.map(b => [...b].reverse().join('\t')).join('\n');
         }
-        text = rows.join('\n');
         navigator.clipboard.writeText(text).then(() => {
             showFeedback(true, `✅ 已複製全部 ${batches.length} 批成績（可貼到 Excel）`);
         }).catch(() => showFeedback(false, '❌ 複製失敗'));
