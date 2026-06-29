@@ -2,11 +2,39 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
     <title>成績統計與組距計算</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { screens: { 'xs': '400px' } } }
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        /* ── 全域自適應基礎 ── */
+        html { box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: inherit; }
+        body { overflow-x: hidden; }
+
+        /* 依視口縮放字體根（16px @ 360px, 18px @ 1280px+）*/
+        :root {
+            font-size: clamp(13px, 1.5vw + 9px, 18px);
+        }
+
+        /* 超小螢幕（< 360px）全頁縮放 */
+        @media (max-width: 360px) {
+            body { transform-origin: top left; transform: scale(0.88); width: calc(100% / 0.88); }
+        }
+
+        /* 標題列在小螢幕換行優化 */
+        @media (max-width: 640px) {
+            .header-btn-row { gap: 4px !important; }
+            .header-btn-row button, .header-btn-row label {
+                padding: 6px 8px !important;
+                font-size: 0.75rem !important;
+            }
+        }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -15,8 +43,9 @@
 
         /* 數字輸入格 */
         .digit-box {
-            width: 72px; height: 88px;
-            font-size: 2.8rem; font-weight: 900;
+            width: clamp(52px, 12vw, 88px);
+            height: clamp(64px, 14vw, 104px);
+            font-size: clamp(1.8rem, 5vw, 3.2rem); font-weight: 900;
             text-align: center;
             border: 3px solid #e2e8f0;
             border-radius: 14px;
@@ -141,10 +170,10 @@
         #numpadModal.open { display: flex; }
 
         #numpadPanel {
-            width: 100%; max-width: 420px;
+            width: 100%; max-width: min(420px, 100vw);
             background: #fff;
             border-radius: 24px 24px 0 0;
-            padding: 0 16px 32px;
+            padding: 0 clamp(10px, 3vw, 16px) clamp(20px, 5vw, 32px);
             box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
             animation: slideUp 0.25s cubic-bezier(.22,1,.36,1);
         }
@@ -165,19 +194,19 @@
             border-radius: 16px; padding: 12px 16px; margin-bottom: 14px;
         }
         #numpadDisplayVal {
-            flex: 1; font-size: 2.6rem; font-weight: 900;
+            flex: 1; font-size: clamp(1.8rem, 6vw, 2.6rem); font-weight: 900;
             color: #1e293b; text-align: center; letter-spacing: 4px;
             min-height: 52px; line-height: 1;
             display: flex; align-items: center; justify-content: center;
         }
-        #numpadDisplayVal.placeholder { color: #cbd5e1; letter-spacing: 0; font-size: 1.4rem; font-weight: 500; }
+        #numpadDisplayVal.placeholder { color: #cbd5e1; letter-spacing: 0; font-size: clamp(1rem, 3vw, 1.4rem); font-weight: 500; }
 
         /* 按鍵格 */
         .np-btn {
             border: none; outline: none; cursor: pointer;
             border-radius: 14px;
-            font-size: 1.6rem; font-weight: 800;
-            height: 64px;
+            font-size: clamp(1.2rem, 4vw, 1.6rem); font-weight: 800;
+            height: clamp(52px, 12vw, 64px);
             display: flex; align-items: center; justify-content: center;
             transition: transform 0.08s, opacity 0.08s, background 0.1s;
             user-select: none; -webkit-tap-highlight-color: transparent;
@@ -285,24 +314,25 @@
         #helpDots span.dot-active { background:#2563eb; }
     </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
-<div class="max-w-5xl mx-auto space-y-6">
+<body class="min-h-screen bg-slate-50 text-slate-800 p-2 sm:p-4 md:p-6 lg:p-8 font-sans">
+<div class="max-w-5xl mx-auto space-y-4 sm:space-y-6">
 
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-            <div class="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
-                <i data-lucide="calculator" size="28"></i>
+            <div class="p-2 sm:p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
+                <i data-lucide="calculator" size="22" class="block sm:hidden"></i>
+                <i data-lucide="calculator" size="28" class="hidden sm:block"></i>
             </div>
             <div>
                 <div class="flex items-center gap-2">
-                    <h1 class="text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
+                    <h1 class="text-lg sm:text-2xl font-bold text-slate-900">成績統計與組距計算</h1>
                     <span id="batchIndicator" style="display:none" class="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 font-bold rounded-full border border-orange-200"></span>
                 </div>
                 <p class="text-sm text-slate-500" id="headerHint">兩位數快速模式</p>
             </div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap justify-end">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-start sm:justify-end header-btn-row w-full sm:w-auto">
             <button id="exportTxtBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 shadow-sm transition-colors text-sm">
                 <i data-lucide="file-down" size="16"></i>
                 <span class="hidden sm:inline">匯出TXT</span>
@@ -343,13 +373,13 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
 
         <!-- 左側 -->
-        <div class="lg:col-span-5 space-y-6">
+        <div class="lg:col-span-5 space-y-4 sm:space-y-6">
 
             <!-- 成績輸入卡片（活頁標籤） -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
                 <!-- 活頁標籤列 -->
                 <div class="flex bg-slate-100 rounded-xl p-1 gap-1 mb-5">
                     <button class="tab-btn active" id="tab2digit" onclick="switchTab('twodigit')">
@@ -381,12 +411,12 @@
                 <!-- ── Tab 2: 自由輸入模式 ── -->
                 <div id="freeRow" class="hidden-el items-center justify-center gap-3">
                     <input id="freeInput" type="text" inputmode="decimal"
-                        class="w-48 h-20 text-4xl font-black text-center border-3 border-slate-200 rounded-2xl bg-slate-50 text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_#bfdbfe] transition-all"
+                        class="w-36 sm:w-48 h-16 sm:h-20 text-3xl sm:text-4xl font-black text-center border-3 border-slate-200 rounded-2xl bg-slate-50 text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_#bfdbfe] transition-all"
                         style="border-width:3px"
                         placeholder="0.0"
                         autocomplete="off" autocorrect="off" spellcheck="false">
                     <button id="freeSubmit"
-                        class="h-20 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-md shadow-blue-200 transition-colors flex items-center gap-2 text-base">
+                        class="h-16 sm:h-20 px-3 sm:px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-md shadow-blue-200 transition-colors flex items-center gap-2 text-sm sm:text-base">
                         <i data-lucide="corner-down-left" size="20"></i>
                         Enter
                     </button>
@@ -425,17 +455,17 @@
 
             <!-- 統計數字 -->
             <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                <div class="bg-white p-3 sm:p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-xs sm:text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
                         <i data-lucide="list-ordered" size="16"></i> 總人數
                     </span>
-                    <span class="text-4xl font-black text-blue-600"><span id="totalCount">0</span> <span class="text-base font-normal text-slate-400">人</span></span>
+                    <span class="text-2xl sm:text-4xl font-black text-blue-600"><span id="totalCount">0</span> <span class="text-sm sm:text-base font-normal text-slate-400">人</span></span>
                 </div>
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <span class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
+                <div class="bg-white p-3 sm:p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-xs sm:text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
                         <i data-lucide="bar-chart-3" size="16"></i> 平均分數
                     </span>
-                    <span id="averageScore" class="text-4xl font-black text-emerald-600">0</span>
+                    <span id="averageScore" class="text-2xl sm:text-4xl font-black text-emerald-600">0</span>
                 </div>
             </div>
 
@@ -470,7 +500,7 @@
 
         <!-- 右側：圖表 -->
         <div class="lg:col-span-7">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
                     <i data-lucide="bar-chart-3" class="text-blue-500" size="20"></i>
                     成績分布 (組距)
